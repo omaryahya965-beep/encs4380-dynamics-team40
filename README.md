@@ -1,4 +1,5 @@
 # Dynamic Characteristics Interactive Toolkit
+<img width="1092" height="888" alt="image" src="https://github.com/user-attachments/assets/0e0e9f8b-e419-476d-b89e-e4ab8d2244a2" />
 
 **ENCS4380 — Interfacing Techniques | Homework 1**  
 Birzeit University · Dr. Wasel Ghanem · Team 40
