@@ -1163,7 +1163,7 @@
     <section class="card intro">
       <h2>How does a sensor follow a sine wave?</h2>
       <p>A first-order sensor reduces the amplitude and delays the phase of a changing input. Explore how time constant and frequency affect its response.</p>
-      <p class="equation-strip">M = 1 / √(1 + (ωτ)²) &nbsp; · &nbsp; φ = −atan(ωτ) &nbsp; · &nbsp; ω = 2πf</p>
+      <p class="equation-strip">M = 1 / √(1 + (ωτ)²) &nbsp; · &nbsp; φ = −tan⁻¹(ωτ) &nbsp; · &nbsp; ω = 2πf</p>
     </section>
     <div class="workspace">
     <section class="card response-card">
@@ -3006,7 +3006,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
       {
         prompt: "At cutoff (ωτ = 1), what are the amplitude ratio and phase shift?",
         choices: [{ text: "M = 1 and φ = 0°.", correct: false }, { text: "M ≈ 0.707 and φ = −45°.", correct: true }, { text: "M = 0.5 and φ = −90°.", correct: false }],
-        explanation: "Substitute ωτ = 1: M = 1 / √2 and φ = −atan(1) = −45°. The magnitude is about −3.01 dB.",
+        explanation: "Substitute ωτ = 1: M = 1 / √2 and φ = −tan⁻¹(1) = −45°. The magnitude is about −3.01 dB.",
         tryIt: "Try it: set τ = 0.2 s and frequency = 0.795774715 Hz. The selected-frequency markers meet the cutoff markers."
       }
     ];
