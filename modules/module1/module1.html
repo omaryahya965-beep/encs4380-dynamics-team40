@@ -1,0 +1,1751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Module 01: First-Order Time Response | ENCS4380 Dynamic Characteristics Toolkit</title>
+  <meta name="description" content="Interactive first-order sensor time response for ENCS4380 Interfacing Techniques, Birzeit University: step and ramp inputs, the 63.2% and 95% points, ramp lag and steady-state error, and the logarithmic error-fraction plot.">
+  <meta name="theme-color" content="#ffffff">
+  <!-- Inline SVG favicon: prevents a 404 request for /favicon.ico on GitHub Pages -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f172a'/%3E%3Cpath d='M6 25C9 14 14 10 26 9' fill='none' stroke='%232dd4bf' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <style>
+    /* =====================================================================
+       SHARED STYLES: design tokens and components reused by every module.
+       Teammates: reuse these classes (.card, .btn, .metric, .legend, ...)
+       in Modules 2-4 so the whole toolkit looks consistent.
+       ===================================================================== */
+    :root {
+      color-scheme: light;
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --slate-100: #f1f5f9;
+      --slate-200: #e2e8f0;
+      --slate-300: #cbd5e1;
+      --text: #334155;
+      --muted: #64748b;
+      --heading: #0f172a;
+      --accent: #0f766e;
+      --accent-strong: #115e59;
+      --accent-soft: #f0fdfa;
+      --accent-ring: rgba(15, 118, 110, 0.24);
+      --blue: #2563eb;
+      --amber: #b45309;
+      --amber-soft: #fffbeb;
+      --pass: #15803d;
+      --pass-soft: #f0fdf4;
+      --fail: #b91c1c;
+      --fail-soft: #fef2f2;
+      --radius-lg: 16px;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 6px 16px -8px rgba(15, 23, 42, 0.08);
+      --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-math: "Cambria Math", Cambria, "STIX Two Math", "STIX Two Text", "Times New Roman", Georgia, serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    [hidden] { display: none !important; }   /* keep the hidden attribute stronger than display rules */
+
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3 { color: var(--heading); line-height: 1.25; margin: 0; }
+    p { margin: 0; }
+    strong { color: var(--heading); font-weight: 650; }
+    code {
+      font-family: var(--font-mono); font-size: 0.86em;
+      background: var(--slate-100); border: 1px solid var(--slate-200);
+      border-radius: 5px; padding: 0.05em 0.35em;
+    }
+
+    .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+    @media (min-width: 768px) { .container { padding: 0 28px; } }
+
+    .skip-link {
+      position: absolute; left: 12px; top: -60px; z-index: 20;
+      background: var(--heading); color: #fff; padding: 8px 14px;
+      border-radius: var(--radius-sm); text-decoration: none; font-weight: 600;
+    }
+    .skip-link:focus { top: 12px; }
+
+    /* ---------- Math typography (equations rendered with HTML, no extra library) ---------- */
+    .math { font-family: var(--font-math); font-size: 1.08em; color: var(--heading); white-space: nowrap; }
+    .math i { font-style: italic; }
+    .math sup { font-size: 0.72em; }
+    .frac {
+      display: inline-flex; flex-direction: column; align-items: center;
+      vertical-align: middle; margin: 0 0.18em; line-height: 1.15; font-size: 0.94em;
+    }
+    .frac > span { padding: 0 0.22em; }
+    .frac > span:first-child { border-bottom: 1px solid currentColor; }
+
+    /* ---------- Header ---------- */
+    .site-header { background: var(--surface); border-bottom: 1px solid var(--slate-200); }
+    .header-inner { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 24px 0 22px; }
+    .course-line { font-size: 14px; font-weight: 600; color: var(--muted); }
+    .course-code { color: var(--accent); font-weight: 700; letter-spacing: 0.02em; }
+    .course-sep { color: var(--slate-300); margin: 0 0.35em; }
+    h1 { font-size: clamp(25px, 3.4vw, 34px); letter-spacing: -0.022em; margin-top: 6px; font-weight: 750; }
+    .module-line { margin-top: 6px; font-size: clamp(16px, 1.8vw, 18px); font-weight: 600; color: #1e293b; }
+    .meta-line { margin-top: 4px; font-size: 14px; color: var(--muted); }
+    .header-badge {
+      flex: none; border: 1px solid var(--slate-200); background: var(--bg);
+      border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 600; color: var(--muted);
+    }
+
+    /* ---------- Layout ---------- */
+    .module { display: grid; gap: 20px; padding: 24px 0 8px; }
+    .workspace { display: grid; gap: 20px; align-items: start; }
+    .workspace-main { display: grid; gap: 20px; min-width: 0; }
+    @media (min-width: 1024px) {
+      .workspace { grid-template-columns: 296px minmax(0, 1fr); }
+      .controls { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
+    }
+
+    /* ---------- Cards and shared text ---------- */
+    .card {
+      background: var(--surface); border: 1px solid var(--slate-200);
+      border-radius: var(--radius-lg); box-shadow: var(--shadow); padding: 20px; min-width: 0;
+    }
+    @media (min-width: 768px) { .card { padding: 24px; } }
+    .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px 16px; flex-wrap: wrap; margin-bottom: 14px; }
+    .card-head h2 { font-size: 19px; letter-spacing: -0.01em; }
+    .card-sub { margin-top: 3px; font-size: 14px; color: var(--muted); }
+    .card-text { font-size: 14.5px; max-width: 78ch; }
+    .card-text + .card-text { margin-top: 8px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+      border: 1px solid var(--slate-200); background: var(--bg); color: var(--text);
+      border-radius: 999px; padding: 4px 11px; font-size: 13px; font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    .chip--accent { background: var(--accent-soft); border-color: #ccfbf1; color: var(--accent-strong); }
+    .chip--pass { background: var(--pass-soft); border-color: #bbf7d0; color: var(--pass); }
+    .chip--fail { background: var(--fail-soft); border-color: #fecaca; color: var(--fail); }
+
+    /* ---------- Buttons ---------- */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      min-height: 40px; padding: 0 16px; border-radius: 10px;
+      border: 1px solid var(--slate-300); background: var(--surface); color: var(--heading);
+      font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+      transition: background-color 0.15s, border-color 0.15s;
+    }
+    .btn:hover:not(:disabled) { background: var(--bg); border-color: #94a3b8; }
+    .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-strong); border-color: var(--accent-strong); }
+    .btn-sm { min-height: 34px; padding: 0 12px; font-size: 13px; }
+    .btn-block { width: 100%; }
+
+    /* ---------- Intro ---------- */
+    .intro { display: grid; gap: 24px; }
+    @media (min-width: 900px) { .intro { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 32px; } }
+    .intro h2 { font-size: 21px; letter-spacing: -0.015em; }
+    .lead { margin-top: 8px; font-size: 16px; color: #1e293b; max-width: 62ch; }
+    .model-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-top: 16px; }
+    .model-box {
+      display: flex; flex-direction: column; gap: 6px; padding: 12px 14px;
+      background: var(--bg); border: 1px solid var(--slate-200); border-radius: var(--radius);
+    }
+    .model-label { font-size: 13px; font-weight: 600; color: var(--muted); }
+    .model-box .math { font-size: 1.22em; }
+    .symbols { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 14px 0 0; font-size: 14px; }
+    .symbols div { display: flex; gap: 6px; align-items: baseline; }
+    .symbols dt { font-family: var(--font-math); font-size: 1.08em; color: var(--heading); }
+    .symbols dd { margin: 0; color: var(--muted); }
+    .assumption-line { margin-top: 10px; font-size: 14px; color: var(--muted); }
+
+    .example { border-left: 3px solid var(--accent); padding: 2px 0 2px 18px; }
+    @media (max-width: 899px) { .example { border-left: 0; border-top: 1px solid var(--slate-200); padding: 20px 0 0; } }
+    .example h3 { font-size: 16px; }
+    .example > p { margin-top: 6px; font-size: 14.5px; }
+    .example-eq { display: inline-block; margin-top: 8px; }
+    .example-steps { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 6px; }
+    .example-steps li {
+      display: grid; grid-template-columns: 7.2em 4.6em 1fr; gap: 10px; align-items: baseline;
+      padding: 7px 0; border-bottom: 1px solid var(--slate-200); font-size: 14px;
+    }
+    .ex-time { color: var(--muted); font-variant-numeric: tabular-nums; }
+    .ex-temp { font-weight: 700; color: var(--heading); font-variant-numeric: tabular-nums; }
+    .ex-note { color: var(--muted); font-size: 13px; }
+    @media (max-width: 480px) {
+      .example-steps li { grid-template-columns: 1fr auto; }
+      .ex-note { grid-column: 1 / -1; }
+    }
+    .example-why { margin-top: 12px; font-size: 14px; }
+
+    /* ---------- Controls ---------- */
+    .controls h2 { font-size: 18px; }
+    .controls-grid { display: grid; gap: 22px; margin-top: 16px; }
+    @media (min-width: 640px) and (max-width: 1023px) { .controls-grid { grid-template-columns: 1fr 1fr; } }
+    .control { display: grid; gap: 8px; border: 0; margin: 0; padding: 0; min-width: 0; }
+    .control-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .control label, .control legend { font-size: 14.5px; font-weight: 650; color: var(--heading); padding: 0; }
+    .var { font-family: var(--font-math); font-size: 1.12em; font-weight: 400; }
+    .control-value {
+      min-width: 68px; text-align: center; padding: 2px 10px; border-radius: var(--radius-sm);
+      background: var(--accent-soft); border: 1px solid #ccfbf1; color: var(--accent-strong);
+      font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums;
+    }
+    .range-scale { display: flex; justify-content: space-between; margin-top: -4px; font-size: 12px; color: var(--muted); }
+    .control-help { font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .assumption {
+      font-size: 13px; line-height: 1.5; padding: 10px 12px;
+      background: var(--bg); border: 1px solid var(--slate-200); border-radius: 10px;
+    }
+
+    /* Range slider: teal fill up to the thumb (--fill is set from JavaScript) */
+    input[type="range"] {
+      --fill: 50%;
+      -webkit-appearance: none; appearance: none;
+      width: 100%; height: 28px; margin: 0; background: transparent; cursor: pointer;
+    }
+    input[type="range"]:focus { outline: none; }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 6px; border-radius: 999px;
+      background: linear-gradient(to right, var(--accent) var(--fill), var(--slate-200) var(--fill));
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 22px; height: 22px; margin-top: -8px; border-radius: 50%;
+      background: #fff; border: 2px solid var(--accent); box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+    }
+    input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 5px var(--accent-ring); }
+    input[type="range"]::-moz-range-track { height: 6px; border-radius: 999px; background: var(--slate-200); }
+    input[type="range"]::-moz-range-progress { height: 6px; border-radius: 999px; background: var(--accent); }
+    input[type="range"]::-moz-range-thumb {
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #fff; border: 2px solid var(--accent); box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+    }
+    input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px var(--accent-ring); }
+
+    /* Segmented control built from native radio buttons (keyboard arrows work) */
+    .segmented {
+      position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px;
+      background: var(--slate-100); border: 1px solid var(--slate-200); border-radius: 12px;
+    }
+    .segmented input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+    .segmented label {
+      display: flex; align-items: center; justify-content: center; min-height: 38px; padding: 6px 10px;
+      border-radius: 9px; font-size: 14px; font-weight: 600; color: var(--muted);
+      cursor: pointer; user-select: none; transition: background-color 0.15s, color 0.15s;
+    }
+    .segmented label:hover { color: var(--heading); }
+    .segmented input:checked + label {
+      background: var(--surface); color: var(--accent-strong);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.1), 0 0 0 1px var(--slate-200);
+    }
+    .segmented input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+    /* ---------- Charts ---------- */
+    .equation-strip {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px 22px;
+      padding: 10px 14px; margin-bottom: 12px; font-size: 15px;
+      background: var(--bg); border: 1px solid var(--slate-200); border-radius: var(--radius);
+    }
+    @media (max-width: 520px) { .equation-strip .math { white-space: normal; } }
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; list-style: none; padding: 0; margin: 0 0 10px; font-size: 13px; }
+    .legend li { display: inline-flex; align-items: center; gap: 7px; }
+    .legend-swatch { flex: none; }
+    .chart-box { position: relative; width: 100%; height: 420px; }
+    .chart-box--log { height: 330px; }
+    @media (max-width: 640px) { .chart-box { height: 310px; } .chart-box--log { height: 280px; } }
+    .chart-fallback {
+      position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center;
+      font-size: 14px; color: var(--muted); background: var(--bg);
+      border: 1px dashed var(--slate-300); border-radius: var(--radius);
+    }
+    .chart-toolbar {
+      display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+      gap: 10px 16px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--slate-200);
+    }
+    .ref-status { font-size: 13.5px; color: var(--muted); }
+    .ref-status strong { font-variant-numeric: tabular-nums; }
+    .chart-tools { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chart-hint { margin-top: 10px; font-size: 13.5px; color: var(--muted); max-width: 85ch; }
+
+    /* ---------- Metrics ---------- */
+    .section-head { margin-bottom: 12px; }
+    .section-head h2 { font-size: 19px; letter-spacing: -0.01em; }
+    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 12px; }
+    .metric {
+      background: var(--surface); border: 1px solid var(--slate-200); border-radius: var(--radius);
+      padding: 14px 16px 15px; border-top: 3px solid var(--slate-300);
+    }
+    .metric--tau { border-top-color: var(--blue); }
+    .metric--accent { border-top-color: var(--accent); }
+    .metric--error { border-top-color: #d97706; }
+    .metric h3 { font-size: 13px; font-weight: 600; color: var(--muted); }
+    .metric-value { margin: 4px 0 4px; font-size: 24px; font-weight: 700; color: var(--heading); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+    .metric-unit { font-size: 14px; font-weight: 600; color: var(--muted); margin-left: 3px; }
+    .metric-note { font-size: 13px; line-height: 1.45; color: var(--muted); }
+    .callout {
+      margin-top: 12px; padding: 16px 18px; border-radius: var(--radius);
+      background: var(--accent-soft); border: 1px solid #ccfbf1;
+    }
+    .callout h3 { font-size: 15px; margin-bottom: 4px; }
+    .callout p { font-size: 14.5px; max-width: 80ch; }
+    .callout p + p { margin-top: 8px; }
+    .callout--ramp { background: var(--amber-soft); border-color: #fde68a; }
+    .unit-pair { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .unit-tag { font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--slate-200); }
+    .unit-tag--error { color: var(--amber); border-color: #fcd34d; }
+    .unit-tag--lag { color: var(--blue); border-color: #bfdbfe; }
+
+    /* ---------- Log chart readout ---------- */
+    .note {
+      margin-bottom: 12px; padding: 10px 14px; font-size: 14px;
+      background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; color: #1e3a8a;
+    }
+    .note strong { color: #1e3a8a; }
+    .readout { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 14px 0; }
+    .readout-item { padding: 10px 14px; background: var(--bg); border: 1px solid var(--slate-200); border-radius: 10px; }
+    .readout-label { display: block; font-size: 13px; color: var(--muted); }
+    .readout-value { display: block; font-size: 18px; font-weight: 700; color: var(--heading); font-variant-numeric: tabular-nums; }
+
+    /* ---------- Predict, then check ---------- */
+    .steps { display: flex; flex-wrap: wrap; gap: 8px 10px; list-style: none; padding: 0; margin: 0 0 16px; counter-reset: step; }
+    .steps li { counter-increment: step; display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--muted); }
+    .steps li::before {
+      content: counter(step); display: grid; place-items: center; width: 22px; height: 22px; flex: none;
+      border-radius: 50%; border: 1.5px solid var(--slate-300); font-size: 12px; font-weight: 700;
+    }
+    .steps li:not(:last-child)::after { content: ""; width: 20px; height: 1px; background: var(--slate-300); }
+    .steps li.is-active { color: var(--heading); font-weight: 650; }
+    .steps li.is-active::before { border-color: var(--accent); color: var(--accent); }
+    .steps li.is-done::before { content: "\2713"; background: var(--accent); border-color: var(--accent); color: #fff; }
+    .predict-question { border: 0; padding: 0; margin: 0; min-width: 0; }
+    .predict-question legend { font-size: 16px; font-weight: 650; color: var(--heading); padding: 0; margin-bottom: 12px; max-width: 70ch; }
+    .choices { display: grid; gap: 8px; }
+    .choice { position: relative; }
+    .choice input { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+    .choice label {
+      display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 10px 14px;
+      border: 1px solid var(--slate-200); border-radius: var(--radius); background: var(--surface);
+      cursor: pointer; font-size: 14.5px; transition: border-color 0.15s, background-color 0.15s;
+    }
+    .choice label::before {
+      content: ""; width: 18px; height: 18px; flex: none; border-radius: 50%;
+      border: 2px solid var(--slate-300); background: var(--surface);
+    }
+    .choice label:hover { border-color: var(--slate-300); }
+    .choice input:checked + label { border-color: var(--accent); background: var(--accent-soft); }
+    .choice input:checked + label::before { border-color: var(--accent); box-shadow: inset 0 0 0 4px var(--surface); background: var(--accent); }
+    .choice input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .choice input:disabled + label { cursor: default; }
+    /* Result colours must beat the :checked rule above, so they use the same selector shape */
+    .choice.is-correct input + label { border-color: var(--pass); background: var(--pass-soft); }
+    .choice.is-wrong input + label { border-color: var(--fail); background: var(--fail-soft); }
+    .choice.is-correct input:checked + label::before { border-color: var(--pass); background: var(--pass); }
+    .choice.is-wrong input:checked + label::before { border-color: var(--fail); background: var(--fail); }
+    .choice-tag { margin-left: auto; font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .choice.is-correct .choice-tag { color: var(--pass); }
+    .choice.is-wrong .choice-tag { color: var(--fail); }
+    .predict-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 16px; }
+    .predict-hint { font-size: 13px; color: var(--muted); }
+    .feedback { margin-top: 16px; padding: 16px 18px; border-radius: var(--radius); border: 1px solid; outline: none; }
+    .feedback.is-correct { background: var(--pass-soft); border-color: #bbf7d0; }
+    .feedback.is-wrong { background: var(--fail-soft); border-color: #fecaca; }
+    .feedback-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+    .feedback.is-correct .feedback-title { color: var(--pass); }
+    .feedback.is-wrong .feedback-title { color: var(--fail); }
+    .feedback p { font-size: 14.5px; max-width: 80ch; }
+    .feedback p + p { margin-top: 8px; }
+    .feedback-observed { color: var(--accent-strong); font-weight: 600; }
+
+    /* ---------- Validation table ---------- */
+    .table-wrap { border: 1px solid var(--slate-200); border-radius: var(--radius); overflow: hidden; margin-top: 14px; }
+    .validation-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .validation-table th {
+      text-align: left; font-size: 13px; font-weight: 600; color: var(--muted);
+      background: var(--bg); padding: 10px 14px; border-bottom: 1px solid var(--slate-200);
+    }
+    .validation-table td { padding: 12px 14px; border-bottom: 1px solid var(--slate-200); vertical-align: top; }
+    .validation-table tr:last-child td { border-bottom: 0; }
+    .cell-main { display: block; font-weight: 650; color: var(--heading); font-variant-numeric: tabular-nums; }
+    .cell-sub { display: block; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .status {
+      display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+      font-size: 12.5px; font-weight: 700; letter-spacing: 0.03em;
+    }
+    .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .status--pass { background: var(--pass-soft); color: var(--pass); }
+    .status--fail { background: var(--fail-soft); color: var(--fail); }
+    .table-note { margin-top: 10px; font-size: 13px; color: var(--muted); max-width: 90ch; }
+    /* Phones: each validation row becomes a small stacked block */
+    @media (max-width: 600px) {
+      .validation-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+      .validation-table, .validation-table tbody, .validation-table tr, .validation-table td { display: block; width: 100%; }
+      .validation-table tr { padding: 6px 0; border-bottom: 1px solid var(--slate-200); }
+      .validation-table tr:last-child { border-bottom: 0; }
+      .validation-table td { display: grid; grid-template-columns: 6.5em 1fr; gap: 10px; padding: 6px 14px; border: 0; }
+      .validation-table td::before { content: attr(data-label); font-size: 12.5px; font-weight: 600; color: var(--muted); }
+    }
+
+    /* ---------- Understanding the parameters ---------- */
+    .concepts { display: grid; gap: 0 32px; margin-top: 4px; }
+    @media (min-width: 760px) { .concepts { grid-template-columns: 1fr 1fr; } }
+    .concept { padding: 16px 0; border-top: 1px solid var(--slate-200); }
+    .concept h3 { font-size: 15.5px; margin-bottom: 4px; }
+    .concept p { font-size: 14.5px; max-width: 64ch; }
+
+    /* ---------- Footer ---------- */
+    .site-footer { margin-top: 32px; border-top: 1px solid var(--slate-200); background: var(--surface); }
+    .footer-inner { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 24px; padding: 20px 0 26px; font-size: 13.5px; color: var(--muted); }
+    .noscript { margin: 16px 0 0; padding: 12px 16px; border-radius: 10px; background: var(--fail-soft); color: var(--fail); }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#m1-controls">Skip to the controls</a>
+
+  <!-- ============================== PAGE HEADER ============================== -->
+  <header class="site-header">
+    <div class="container header-inner">
+      <div>
+        <p class="course-line"><span class="course-code">ENCS4380</span><span class="course-sep" aria-hidden="true">|</span>Interfacing Techniques</p>
+        <h1>Dynamic Characteristics Toolkit</h1>
+        <p class="module-line">Module 01 — First-Order Time Response</p>
+        <p class="meta-line">Birzeit University · Dr. Wasel Ghanem</p>
+      </div>
+      <span class="header-badge">Homework 1</span>
+    </div>
+    <!-- Teammates: when Modules 2–4 exist, a navigation bar linking them can go here. -->
+  </header>
+
+  <main class="container">
+    <noscript><p class="noscript">This toolkit needs JavaScript to draw its interactive charts.</p></noscript>
+
+    <!-- ======================================================================
+         MODULE 1: FIRST-ORDER TIME RESPONSE
+         Every id in this module starts with "m1-". Modules 2–4 should use
+         "m2-", "m3-", "m4-" so nothing collides when the pages are merged.
+         ====================================================================== -->
+    <section class="module" id="module-1" aria-labelledby="m1-intro-title">
+
+      <!-- 1. Module introduction -->
+      <article class="card intro">
+        <div>
+          <h2 id="m1-intro-title">How closely does a sensor follow its input?</h2>
+          <p class="lead">Explore how a first-order sensor responds to changing inputs. Adjust its gain and time constant to understand response speed, tracking error, and sensor lag.</p>
+          <div class="model-grid">
+            <div class="model-box">
+              <span class="model-label">Sensor model</span>
+              <span class="math"><i>τ</i><span class="frac"><span><i>dy</i></span><span><i>dt</i></span></span>+ <i>y</i> = <i>K x</i>(<i>t</i>)</span>
+            </div>
+            <div class="model-box">
+              <span class="model-label">Transfer function</span>
+              <span class="math"><i>G</i>(<i>s</i>) = <span class="frac"><span><i>K</i></span><span><i>τs</i> + 1</span></span></span>
+            </div>
+          </div>
+          <dl class="symbols">
+            <div><dt><i>K</i></dt><dd>static gain</dd></div>
+            <div><dt><i>τ</i></dt><dd>time constant (s)</dd></div>
+            <div><dt><i>x</i>(<i>t</i>)</dt><dd>input</dd></div>
+            <div><dt><i>y</i>(<i>t</i>)</dt><dd>sensor output</dd></div>
+          </dl>
+          <p class="assumption-line">Assumptions: zero initial conditions, <i>y</i>(0) = 0, and input amplitude <strong>A = 1</strong>.</p>
+        </div>
+
+        <aside class="example" aria-labelledby="m1-example-title">
+          <h3 id="m1-example-title">Example: a thermometer dipped into tea</h3>
+          <p>A thermometer with τ = 10 s moves from room air at 20 °C into tea at 80 °C. That is a 60 °C step with K = 1:</p>
+          <p class="math example-eq"><i>T</i>(<i>t</i>) = 20 + 60(1 − <i>e</i><sup>−<i>t</i>/10</sup>) °C</p>
+          <ol class="example-steps">
+            <li><span class="ex-time">t = 0 s</span><span class="ex-temp">20.0 °C</span><span class="ex-note">still at room temperature</span></li>
+            <li><span class="ex-time">t = 10 s = τ</span><span class="ex-temp">57.9 °C</span><span class="ex-note">20 + 0.632 × 60, 63.2% of the step</span></li>
+            <li><span class="ex-time">t = 30 s = 3τ</span><span class="ex-temp">77.0 °C</span><span class="ex-note">20 + 0.950 × 60, 95% of the step</span></li>
+          </ol>
+          <p class="example-why"><strong>Why only about 58 °C after 10 s?</strong> After one time constant, any first-order sensor has covered 1 − e<sup>−1</sup> = 63.2% of a step, and 0.632 × 60 °C ≈ 38 °C above the starting 20 °C. Read it then and you are about 22 °C low, even though the thermometer is perfectly calibrated: it simply has not caught up yet.</p>
+        </aside>
+      </article>
+
+      <div class="workspace">
+        <!-- 2. Control panel -->
+        <section class="card controls" id="m1-controls" aria-labelledby="m1-controls-title" tabindex="-1">
+          <h2 id="m1-controls-title">Sensor controls</h2>
+          <div class="controls-grid">
+            <div class="control">
+              <div class="control-row">
+                <label for="m1-k">Static gain <span class="var">K</span></label>
+                <output class="control-value" id="m1-k-value" for="m1-k">1.0</output>
+              </div>
+              <input type="range" id="m1-k" min="0.5" max="3" step="0.1" value="1" aria-describedby="m1-k-help">
+              <div class="range-scale" aria-hidden="true"><span>0.5</span><span>3.0</span></div>
+              <p class="control-help" id="m1-k-help">Scales the final value KA. It does not change the timing.</p>
+            </div>
+
+            <div class="control">
+              <div class="control-row">
+                <label for="m1-tau">Time constant <span class="var">τ</span></label>
+                <output class="control-value" id="m1-tau-value" for="m1-tau">2.0 s</output>
+              </div>
+              <input type="range" id="m1-tau" min="0.2" max="10" step="0.1" value="2" aria-describedby="m1-tau-help">
+              <div class="range-scale" aria-hidden="true"><span>0.2 s</span><span>10 s</span></div>
+              <p class="control-help" id="m1-tau-help">How sluggish the sensor is. A larger τ means a slower response.</p>
+            </div>
+
+            <fieldset class="control">
+              <legend>Input signal <span class="var">x</span>(<span class="var">t</span>)</legend>
+              <div class="segmented">
+                <input type="radio" name="m1-input" id="m1-input-step" value="step" checked>
+                <label for="m1-input-step">Step input</label>
+                <input type="radio" name="m1-input" id="m1-input-ramp" value="ramp">
+                <label for="m1-input-ramp">Ramp input</label>
+              </div>
+              <p class="control-help" id="m1-input-help">x(t) = A for t ≥ 0: a sudden change, like plunging a thermometer into tea.</p>
+            </fieldset>
+
+            <div class="control">
+              <p class="assumption"><strong>A = 1, fixed.</strong> For the step it is the step height; for the ramp it is the rate, 1 input unit per second. Initial conditions are zero.</p>
+              <button type="button" class="btn btn-block" id="m1-reset">Reset to defaults</button>
+            </div>
+          </div>
+        </section>
+
+        <div class="workspace-main">
+          <!-- 3. Main response chart -->
+          <section class="card" aria-labelledby="m1-chart-title">
+            <div class="card-head">
+              <div>
+                <h2 id="m1-chart-title">Step response</h2>
+                <p class="card-sub" id="m1-chart-sub">How the sensor output follows a sudden change of input.</p>
+              </div>
+              <span class="chip" id="m1-param-chip">K = 1.0, τ = 2.0 s, A = 1</span>
+            </div>
+
+            <div class="equation-strip" id="m1-eq-step">
+              <span class="math"><i>x</i>(<i>t</i>) = <i>A</i> for <i>t</i> ≥ 0</span>
+              <span class="math"><i>y</i>(<i>t</i>) = <i>KA</i>(1 − <i>e</i><sup>−<i>t</i>/<i>τ</i></sup>)</span>
+            </div>
+            <div class="equation-strip" id="m1-eq-ramp" hidden>
+              <span class="math"><i>x</i>(<i>t</i>) = <i>At</i></span>
+              <span class="math"><i>y</i>(<i>t</i>) = <i>KA</i>[<i>t</i> − <i>τ</i>(1 − <i>e</i><sup>−<i>t</i>/<i>τ</i></sup>)]</span>
+              <span class="math"><i>e</i>(<i>t</i>) = <i>Kx</i>(<i>t</i>) − <i>y</i>(<i>t</i>)</span>
+              <span class="math">= <i>KAτ</i>(1 − <i>e</i><sup>−<i>t</i>/<i>τ</i></sup>)</span>
+            </div>
+
+            <ul class="legend" id="m1-main-legend" aria-label="Main chart legend"></ul>
+            <div class="chart-box">
+              <canvas id="m1-main-chart" role="img" aria-label="First-order sensor response chart"></canvas>
+              <p class="chart-fallback" data-chart-fallback hidden>The chart could not be drawn because Chart.js did not load. Check your internet connection and reload the page. The metrics, activity and validation below still work.</p>
+            </div>
+
+            <div class="chart-toolbar">
+              <p class="ref-status" id="m1-ref-status" aria-live="polite"></p>
+              <div class="chart-tools">
+                <button type="button" class="btn btn-sm" id="m1-pin">Pin current curve</button>
+                <button type="button" class="btn btn-sm" id="m1-unpin">Clear reference</button>
+              </div>
+            </div>
+            <p class="chart-hint">Hover or tap the chart to read exact values. The time axis always spans 0 to 6τ with one gridline per time constant, so the curve keeps its shape while the seconds on the axis change. To see a change in speed or size, compare the live curve with the dotted reference curve.</p>
+          </section>
+
+          <!-- 4. Live response metrics -->
+          <section aria-labelledby="m1-metrics-title">
+            <div class="section-head">
+              <h2 id="m1-metrics-title">Live response metrics</h2>
+              <p class="card-sub">Recalculated from the formulas every time you move a control.</p>
+            </div>
+
+            <div class="metrics" id="m1-metrics-step">
+              <article class="metric metric--tau">
+                <h3>Time constant τ</h3>
+                <p class="metric-value"><span id="m1-step-tau">2.00</span><span class="metric-unit">s</span></p>
+                <p class="metric-note">Time to reach 63.2% of the final value.</p>
+              </article>
+              <article class="metric metric--accent">
+                <h3>Final value KA</h3>
+                <p class="metric-value" id="m1-step-final">1.000</p>
+                <p class="metric-note">Where the output settles for a step of height A = 1.</p>
+              </article>
+              <article class="metric">
+                <h3>Output at t = τ</h3>
+                <p class="metric-value" id="m1-step-ytau">0.632</p>
+                <p class="metric-note" id="m1-step-ytau-note">63.2% of KA, reached at t = 2.00 s.</p>
+              </article>
+              <article class="metric">
+                <h3>Output at t = 3τ</h3>
+                <p class="metric-value" id="m1-step-y3tau">0.950</p>
+                <p class="metric-note" id="m1-step-y3tau-note">95.0% of KA, reached at t = 6.00 s.</p>
+              </article>
+              <article class="metric">
+                <h3>Rise time 10–90%</h3>
+                <p class="metric-value"><span id="m1-step-rise">4.39</span><span class="metric-unit">s</span></p>
+                <p class="metric-note">t<sub>r</sub> = τ ln 9 ≈ 2.20τ for any first-order sensor.</p>
+              </article>
+            </div>
+
+            <div class="metrics" id="m1-metrics-ramp" hidden>
+              <article class="metric metric--tau">
+                <h3>Time constant τ</h3>
+                <p class="metric-value"><span id="m1-ramp-tau">2.00</span><span class="metric-unit">s</span></p>
+                <p class="metric-note">Sets how far behind the output runs.</p>
+              </article>
+              <article class="metric metric--accent">
+                <h3>Ideal output slope KA</h3>
+                <p class="metric-value"><span id="m1-ramp-slope">1.00</span><span class="metric-unit">per s</span></p>
+                <p class="metric-note">How fast K·x(t) rises, in output units per second.</p>
+              </article>
+              <article class="metric metric--error">
+                <h3>Steady-state error e<sub>ss</sub></h3>
+                <p class="metric-value"><span id="m1-ramp-ess">2.00</span><span class="metric-unit">output units</span></p>
+                <p class="metric-note">e<sub>ss</sub> = KAτ. The vertical gap between the lines.</p>
+              </article>
+              <article class="metric metric--tau">
+                <h3>Steady-state time lag</h3>
+                <p class="metric-value"><span id="m1-ramp-lag">2.00</span><span class="metric-unit">s</span></p>
+                <p class="metric-note">Equal to τ. The horizontal gap between the lines.</p>
+              </article>
+            </div>
+
+            <div class="callout" id="m1-step-callout">
+              <h3>Why 63.2% and 95%?</h3>
+              <p>Put t = τ into y(t) = KA(1 − e<sup>−t/τ</sup>) and you get KA(1 − e<sup>−1</sup>) = 0.632 KA. At t = 3τ, 1 − e<sup>−3</sup> = 0.950. These fractions are the same for every K and τ, so you can read τ straight off a measured step response: it is the moment the output reaches 63.2% of its final value.</p>
+            </div>
+
+            <div class="callout callout--ramp" id="m1-ramp-callout" hidden>
+              <h3>Why the ramp error never disappears</h3>
+              <p>The sensor output only moves when there is a gap: τ dy/dt = Kx − y. To keep climbing at the ramp’s rate, dy/dt = KA, the gap must settle at Kx − y = KAτ. The output becomes a copy of the ideal ramp shifted right by τ: y(t) → KA(t − τ).</p>
+              <p id="m1-ramp-live">With K = 1.0 and τ = 2.0 s, the ideal output climbs 1.00 units every second and the sensor is 2.00 s behind, so it sits 1.00 × 2.00 = 2.00 units below the ideal line.</p>
+              <div class="unit-pair">
+                <span class="unit-tag unit-tag--error">Error KAτ: output units, vertical gap</span>
+                <span class="unit-tag unit-tag--lag">Lag τ: seconds, horizontal gap</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- 5. Logarithmic error-fraction chart -->
+          <section class="card" aria-labelledby="m1-log-title">
+            <div class="card-head">
+              <div>
+                <h2 id="m1-log-title">Error fraction on a logarithmic axis</h2>
+                <p class="card-sub">Step-response reference: how much of the step is still missing at time t.</p>
+              </div>
+              <span class="chip chip--accent" id="m1-slope-chip">slope of ln f = −0.500 s⁻¹</span>
+            </div>
+            <div class="equation-strip">
+              <span class="math"><i>f</i>(<i>t</i>) = <span class="frac"><span><i>KA</i> − <i>y</i>(<i>t</i>)</span><span><i>KA</i></span></span> = <i>e</i><sup>−<i>t</i>/<i>τ</i></sup></span>
+              <span class="math">ln <i>f</i>(<i>t</i>) = −<i>t</i>/<i>τ</i></span>
+            </div>
+            <p class="note" id="m1-log-ramp-note" hidden>You are viewing the <strong>ramp</strong> response above. This chart still shows the <strong>step-response</strong> error fraction for the current τ. The ramp tracking error does not decay to zero (it grows toward KAτ), so the step formula does not describe it.</p>
+            <ul class="legend" id="m1-log-legend" aria-label="Logarithmic chart legend"></ul>
+            <div class="chart-box chart-box--log">
+              <canvas id="m1-log-chart" role="img" aria-label="Step-response error fraction on a logarithmic axis"></canvas>
+              <p class="chart-fallback" data-chart-fallback hidden>The chart could not be drawn because Chart.js did not load. Check your internet connection and reload the page.</p>
+            </div>
+            <div class="readout">
+              <div class="readout-item"><span class="readout-label">Theoretical slope of ln f, −1/τ</span><span class="readout-value" id="m1-slope-theory">−0.500 s⁻¹</span></div>
+              <div class="readout-item"><span class="readout-label">Slope read from the curve, τ to 3τ</span><span class="readout-value" id="m1-slope-read">−0.500 s⁻¹</span></div>
+              <div class="readout-item"><span class="readout-label">Estimated τ = −1 / slope</span><span class="readout-value" id="m1-tau-estimate">2.00 s</span></div>
+            </div>
+            <p class="card-text"><strong>Why this is useful:</strong> with real, noisy data you rarely know exactly where the 63.2% point is. Instead, compute f(t) for every sample, plot it on a log axis and fit a straight line: τ = −1/slope. The fit uses all the data, so it is much less sensitive to noise than a single reading, and if the points do not form a straight line, the sensor is not behaving as first order (or the final value is wrong).</p>
+            <p class="card-text">The right-hand axis shows ln f directly: it drops by exactly 1 for every τ seconds, which is the slope −1/τ. K does not appear in f(t), so moving the K slider leaves this chart unchanged.</p>
+          </section>
+
+          <!-- 6. Predict, then check (driven by createPredictCheck in the script) -->
+          <section class="card" id="m1-predict" aria-labelledby="m1-predict-title">
+            <div class="card-head">
+              <div>
+                <h2 id="m1-predict-title">Predict, then check</h2>
+                <p class="card-sub">Commit to an answer first, then test it on the chart.</p>
+              </div>
+              <span class="chip" data-role="progress">Question 1 of 3</span>
+            </div>
+            <ol class="steps" aria-label="Activity progress">
+              <li data-step="predict">Predict</li>
+              <li data-step="check">Check</li>
+              <li data-step="observe">Observe on the chart</li>
+            </ol>
+            <fieldset class="predict-question">
+              <legend data-role="prompt"></legend>
+              <div class="choices" data-role="choices"></div>
+            </fieldset>
+            <div class="predict-actions">
+              <button type="button" class="btn btn-primary" data-role="check" disabled>Check prediction</button>
+              <button type="button" class="btn" data-role="retry" hidden>Try again</button>
+              <button type="button" class="btn" data-role="next" hidden>Next question</button>
+              <p class="predict-hint" data-role="hint">Choose an answer to enable the check.</p>
+            </div>
+            <div class="feedback" data-role="feedback" tabindex="-1" aria-live="polite" hidden></div>
+          </section>
+
+          <!-- 7. Validation checks -->
+          <section class="card" aria-labelledby="m1-validation-title">
+            <div class="card-head">
+              <div>
+                <h2 id="m1-validation-title">Validation checks</h2>
+                <p class="card-sub">Validation test 1 from the lecture slides: first-order step response.</p>
+              </div>
+              <span class="chip" id="m1-validation-summary">Checking…</span>
+            </div>
+            <p class="card-text">The calculated values come from the same <code>FirstOrder.stepResponse()</code> function that draws the chart, evaluated live at the current K and τ.</p>
+            <div class="table-wrap">
+              <table class="validation-table">
+                <thead>
+                  <tr><th scope="col">Check</th><th scope="col">Expected</th><th scope="col">Calculated</th><th scope="col">Status</th></tr>
+                </thead>
+                <tbody id="m1-validation-body"></tbody>
+              </table>
+            </div>
+            <p class="table-note">PASS when |y/KA − expected| ≤ 0.001, because the reference values are rounded to three decimals. Validation tests 2 to 6 (frequency response, second order, state space) belong to Modules 2 and 3.</p>
+          </section>
+        </div>
+      </div>
+
+      <!-- 8. Understanding the parameters -->
+      <section class="card" aria-labelledby="m1-concepts-title">
+        <div class="section-head">
+          <h2 id="m1-concepts-title">Understanding the parameters</h2>
+        </div>
+        <div class="concepts">
+          <article class="concept">
+            <h3>What is a first-order sensor?</h3>
+            <p>A sensor whose dynamics are dominated by one energy-storage element: the heat stored in a thermometer bulb, or the charge on an RC filter’s capacitor. Its output cannot jump. It moves toward K·x at a rate proportional to the remaining gap: τ dy/dt = Kx − y.</p>
+          </article>
+          <article class="concept">
+            <h3>What does τ mean physically?</h3>
+            <p>τ compares how much energy the sensor must store with how easily it exchanges energy. For a thermometer, τ = mc/(hA): heat capacity divided by heat-transfer coefficient times surface area. A bigger bulb, or still air instead of stirred water, means a larger τ.</p>
+          </article>
+          <article class="concept">
+            <h3>What happens when τ increases?</h3>
+            <p>Every response time stretches in proportion: the 63.2% point (τ), the 95% point (3τ) and the 10–90% rise time (2.2τ). Doubling τ doubles all of them. The final value KA does not change.</p>
+          </article>
+          <article class="concept">
+            <h3>What does the gain K change?</h3>
+            <p>K is the static sensitivity, in output units per input unit (for example, mV per °C). It scales the final value KA and the whole curve vertically, but not the timing: the output still reaches 63.2% of its final value at t = τ.</p>
+          </article>
+          <article class="concept">
+            <h3>Why is there a steady-state error for a ramp?</h3>
+            <p>To keep climbing at the ramp’s rate KA, the output needs a constant gap Kx − y = KAτ to drive it. So it runs parallel to the ideal ramp, τ seconds late. The same delay shows up as an error of KAτ in output units, or as a lag of τ in seconds.</p>
+          </article>
+          <article class="concept">
+            <h3>Why is the logarithmic error plot useful?</h3>
+            <p>On a log axis, f(t) = e<sup>−t/τ</sup> becomes a straight line whose slope gives τ. Fitting that line to measured samples uses all of the data rather than one 63.2% reading, so the estimate is robust to noise, and a curved plot warns that the sensor is not truly first order.</p>
+          </article>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <!-- ============================== FOOTER ============================== -->
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <p><strong>ENCS4380 Interfacing Techniques</strong>, Homework 1: Dynamic Characteristics Toolkit</p>
+      <p>Birzeit University, Dr. Wasel Ghanem. Team 40. Module 01: First-Order Time Response.</p>
+    </div>
+  </footer>
+
+  <!-- Chart.js 4.4.1 (UMD build, pinned version). If it fails to load, the page shows a notice instead of charts. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" referrerpolicy="no-referrer"></script>
+  <script>
+  'use strict';
+
+  /* =========================================================================
+     1. SHARED TOOLKIT HELPERS
+        Plain functions that Modules 2–4 can reuse: number formatting, chart
+        theme, a small annotation plugin, legends, the validation table and
+        the "Predict, then check" component.
+     ========================================================================= */
+
+  /** Colours used by every chart, kept in one place. */
+  const THEME = {
+    font: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    text: '#475569',
+    grid: '#e6ebf1',
+    axis: '#cbd5e1',
+    output: '#0f766e',     // sensor output y(t)
+    ideal: '#1e293b',      // ideal gain-scaled input K·x(t)
+    reference: '#94a3b8',  // pinned comparison curve
+    tau: '#2563eb',        // anything that is "one time constant" (τ marker, time lag)
+    tau3: '#0f172a',       // the 3τ marker
+    error: '#d97706',      // output error, drawn lines
+    errorText: '#b45309'   // output error, text (darker for contrast)
+  };
+
+  /** True when the Chart.js script loaded from the CDN. */
+  const CHARTS_AVAILABLE = typeof window.Chart === 'function';
+
+  /** Format a number with fixed decimals and a true minus sign (−). */
+  function fmt(value, decimals = 3) {
+    if (!Number.isFinite(value)) return '—';
+    const rounded = Math.abs(value) < 0.5 * Math.pow(10, -decimals) ? 0 : value;
+    const text = rounded.toFixed(decimals);
+    return text.charAt(0) === '-' ? '\u2212' + text.slice(1) : text;
+  }
+
+  /** Short axis-tick format: 2.50 → "2.5", 12.00 → "12". */
+  function fmtTick(value) {
+    return String(Number(value.toFixed(2)));
+  }
+
+  /** Escape text before inserting it into HTML. */
+  function escapeHtml(text) {
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+    return String(text).replace(/[&<>"']/g, (ch) => map[ch]);
+  }
+
+  /** "#rrggbb" → "rgba(r, g, b, alpha)". */
+  function hexToRgba(hex, alpha) {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+  }
+
+  /** Global Chart.js look: fonts and colours. */
+  function applyChartDefaults() {
+    Chart.defaults.font.family = THEME.font;
+    Chart.defaults.font.size = 12;
+    Chart.defaults.color = THEME.text;
+    Chart.defaults.borderColor = THEME.grid;
+  }
+
+  /** Dark tooltip style shared by all charts. */
+  function tooltipStyle() {
+    return {
+      backgroundColor: 'rgba(15, 23, 42, 0.94)',
+      titleColor: '#ffffff',
+      bodyColor: '#e2e8f0',
+      footerColor: '#5eead4',
+      titleFont: { weight: '600' },
+      footerFont: { weight: '500' },
+      padding: 10,
+      cornerRadius: 8,
+      boxPadding: 4,
+      caretSize: 5
+    };
+  }
+
+  /**
+   * Time axis from 0 to spanInTau·τ with one tick (and gridline) per time constant.
+   * Each tick label has two lines: the time in seconds and the multiple of τ.
+   * getTau() is called on every redraw, so the axis follows the τ slider.
+   */
+  function tauTimeAxis(getTau, spanInTau) {
+    return {
+      type: 'linear',
+      min: 0,
+      max: spanInTau * getTau(),
+      title: { display: true, text: 'Time t (s)', font: { weight: '600' } },
+      grid: { color: THEME.grid },
+      border: { color: THEME.axis },
+      ticks: {
+        autoSkip: false,
+        maxRotation: 0,
+        callback: (value) => {
+          const n = Math.round(value / getTau());
+          return [fmtTick(value), n === 0 ? '' : n === 1 ? 'τ' : n + 'τ'];
+        }
+      },
+      afterBuildTicks: (axis) => {
+        const tau = getTau();
+        axis.ticks = Array.from({ length: spanInTau + 1 }, (_, n) => ({ value: n * tau }));
+      }
+    };
+  }
+
+  /* ---------- Annotation plugin ----------
+     Draws teaching annotations in data coordinates (no extra library):
+       lines    – thin dashed guides, drawn BEHIND the curves
+       segments – emphasised segments (optional end caps), drawn ON TOP
+       markers  – filled circles on characteristic points
+       labels   – short text tags on a white background
+     getGuides() returns { lines, segments, markers, labels } for the current state. */
+  function createGuidesPlugin(getGuides) {
+    return {
+      id: 'teachingGuides',
+      beforeDatasetsDraw(chart) {
+        const guides = getGuides();
+        if (guides) drawClipped(chart, () => (guides.lines || []).forEach((s) => drawSegment(chart, s)));
+      },
+      afterDatasetsDraw(chart) {
+        const guides = getGuides();
+        if (!guides) return;
+        drawClipped(chart, () => {
+          (guides.segments || []).forEach((s) => drawSegment(chart, s));
+          (guides.markers || []).forEach((m) => drawMarker(chart, m));
+        });
+        (guides.labels || []).forEach((label) => drawLabel(chart, label));
+      }
+    };
+  }
+
+  /** Run a drawing function clipped to the plotting area. */
+  function drawClipped(chart, drawFn) {
+    const { ctx, chartArea: a } = chart;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(a.left, a.top, a.right - a.left, a.bottom - a.top);
+    ctx.clip();
+    drawFn();
+    ctx.restore();
+  }
+
+  /** Data coordinates → canvas pixels. */
+  function toPixels(chart, x, y, yAxis) {
+    return { px: chart.scales.x.getPixelForValue(x), py: chart.scales[yAxis || 'y'].getPixelForValue(y) };
+  }
+
+  function drawSegment(chart, s) {
+    const a = toPixels(chart, s.x1, s.y1, s.yAxis);
+    const b = toPixels(chart, s.x2, s.y2, s.yAxis);
+    if (![a.px, a.py, b.px, b.py].every(Number.isFinite)) return;
+    const { ctx } = chart;
+    ctx.save();
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = s.width || 1.25;
+    ctx.setLineDash(s.dash || []);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(a.px, a.py);
+    ctx.lineTo(b.px, b.py);
+    if (s.caps) {                                   // short perpendicular ticks at both ends
+      const len = Math.hypot(b.px - a.px, b.py - a.py) || 1;
+      const nx = (-(b.py - a.py) / len) * 5;
+      const ny = ((b.px - a.px) / len) * 5;
+      [a, b].forEach((p) => { ctx.moveTo(p.px - nx, p.py - ny); ctx.lineTo(p.px + nx, p.py + ny); });
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawMarker(chart, m) {
+    const p = toPixels(chart, m.x, m.y, m.yAxis);
+    if (!Number.isFinite(p.px) || !Number.isFinite(p.py)) return;
+    const { ctx } = chart;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(p.px, p.py, m.radius || 5.5, 0, Math.PI * 2);
+    ctx.fillStyle = m.color;
+    ctx.fill();
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = '#ffffff';
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /** Rounded rectangle path (ctx.roundRect is missing in some older browsers). */
+  function roundedRectPath(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  /** Text tag anchored at (x, y) + (dx, dy) px, kept inside the plotting area. */
+  function drawLabel(chart, label) {
+    const p = toPixels(chart, label.x, label.y, label.yAxis);
+    if (!Number.isFinite(p.px) || !Number.isFinite(p.py)) return;
+    const { ctx, chartArea: area } = chart;
+    const narrow = area.right - area.left < 440;     // phones: use the short text
+    const text = narrow && label.short ? label.short : label.text;
+    ctx.save();
+    ctx.font = `600 11.5px ${THEME.font}`;
+    const w = ctx.measureText(text).width + 12;
+    const h = 20;
+    const ax = p.px + (label.dx || 0);
+    const ay = p.py + (label.dy || 0);
+    let left = label.align === 'right' ? ax - w : label.align === 'center' ? ax - w / 2 : ax;
+    let top = ay - h / 2;
+    left = Math.min(Math.max(left, area.left + 2), area.right - w - 2);
+    top = Math.min(Math.max(top, area.top + 2), area.bottom - h - 2);
+    roundedRectPath(ctx, left, top, w, h, 6);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.94)';
+    ctx.fill();
+    ctx.strokeStyle = hexToRgba(label.color, 0.35);
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = label.color;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, left + 6, top + h / 2 + 0.5);
+    ctx.restore();
+  }
+
+  /* ---------- HTML legend (matches the line styles drawn on the canvas) ---------- */
+  const LEGEND_SWATCHES = {
+    line:   (c) => `<line x1="1" y1="6" x2="23" y2="6" stroke="${c}" stroke-width="2.75" stroke-linecap="round"/>`,
+    dashed: (c) => `<line x1="1" y1="6" x2="23" y2="6" stroke="${c}" stroke-width="2" stroke-dasharray="6 4"/>`,
+    dotted: (c) => `<line x1="1" y1="6" x2="23" y2="6" stroke="${c}" stroke-width="2" stroke-dasharray="2 3"/>`,
+    dot:    (c) => `<circle cx="12" cy="6" r="4.5" fill="${c}" stroke="#fff" stroke-width="1.5"/>`,
+    vbar:   (c) => `<path d="M12 1.5v9M9 1.5h6M9 10.5h6" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/>`,
+    hbar:   (c) => `<path d="M3 6h18M3 3v6M21 3v6" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/>`
+  };
+
+  /** items: [{ label, kind: 'line'|'dashed'|'dotted'|'dot'|'vbar'|'hbar', color }] */
+  function renderLegend(listEl, items) {
+    listEl.innerHTML = items.map((item) =>
+      `<li><svg class="legend-swatch" viewBox="0 0 24 12" width="24" height="12" aria-hidden="true">${LEGEND_SWATCHES[item.kind](item.color)}</svg>${escapeHtml(item.label)}</li>`
+    ).join('');
+  }
+
+  /* ---------- Validation table ----------
+     checks: [{ name, detail, expected: { main, sub }, calculated: { main, sub }, pass }]
+     Returns the number of passing checks. Reusable by Modules 2 and 3. */
+  function renderValidation(tbody, checks) {
+    tbody.replaceChildren(...checks.map((check) => {
+      const row = document.createElement('tr');
+      row.append(
+        validationCell('Check', check.name, check.detail),
+        validationCell('Expected', check.expected.main, check.expected.sub),
+        validationCell('Calculated', check.calculated.main, check.calculated.sub),
+        statusCell(check.pass)
+      );
+      return row;
+    }));
+    return checks.filter((check) => check.pass).length;
+  }
+
+  function validationCell(label, main, sub) {
+    const td = document.createElement('td');
+    td.dataset.label = label;                      // used by the stacked phone layout
+    const wrap = document.createElement('div');
+    const mainEl = document.createElement('span');
+    mainEl.className = 'cell-main';
+    mainEl.textContent = main;
+    wrap.append(mainEl);
+    if (sub) {
+      const subEl = document.createElement('span');
+      subEl.className = 'cell-sub';
+      subEl.textContent = sub;
+      wrap.append(subEl);
+    }
+    td.append(wrap);
+    return td;
+  }
+
+  function statusCell(pass) {
+    const td = document.createElement('td');
+    td.dataset.label = 'Status';
+    const badge = document.createElement('span');
+    badge.className = 'status ' + (pass ? 'status--pass' : 'status--fail');
+    badge.textContent = pass ? 'PASS' : 'FAIL';
+    const wrap = document.createElement('div');
+    wrap.append(badge);
+    td.append(wrap);
+    return td;
+  }
+
+  /* ---------- "Predict, then check" component ----------
+     root: the activity card (uses data-role attributes for its parts).
+     questions: [{ prompt, choices: [{ text, correct }], explanation, tryIt }]
+     hooks.onCheck(question, isCorrect) runs after each check.
+     Returns { notifyInteraction() } — call it when the user moves a control. */
+  function createPredictCheck(root, questions, hooks = {}) {
+    const part = (role) => root.querySelector(`[data-role="${role}"]`);
+    const prompt = part('prompt');
+    const choicesBox = part('choices');
+    const checkBtn = part('check');
+    const retryBtn = part('retry');
+    const nextBtn = part('next');
+    const hint = part('hint');
+    const feedback = part('feedback');
+    const progress = part('progress');
+    const steps = root.querySelectorAll('[data-step]');
+    const groupName = root.id + '-choice';
+    let current = 0;
+    let checked = false;
+    let observed = false;
+
+    /** stage: 'predict' | 'observe' | 'done' */
+    function setStage(stage) {
+      const order = ['predict', 'check', 'observe'];
+      const activeIndex = stage === 'predict' ? 0 : stage === 'observe' ? 2 : 3;
+      steps.forEach((li) => {
+        const i = order.indexOf(li.dataset.step);
+        li.classList.toggle('is-done', i < activeIndex);
+        li.classList.toggle('is-active', i === activeIndex);
+      });
+    }
+
+    function renderQuestion() {
+      const q = questions[current];
+      checked = false;
+      observed = false;
+      prompt.textContent = q.prompt;
+      progress.textContent = `Question ${current + 1} of ${questions.length}`;
+      choicesBox.replaceChildren(...q.choices.map((choice, i) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'choice';
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.name = groupName;
+        input.id = `${groupName}-${current}-${i}`;
+        input.value = String(i);
+        const label = document.createElement('label');
+        label.htmlFor = input.id;
+        label.textContent = choice.text;
+        wrap.append(input, label);
+        return wrap;
+      }));
+      checkBtn.hidden = false;
+      checkBtn.disabled = true;
+      hint.hidden = false;
+      retryBtn.hidden = true;
+      nextBtn.hidden = true;
+      feedback.hidden = true;
+      feedback.replaceChildren();
+      setStage('predict');
+    }
+
+    function addParagraph(text, className) {
+      const p = document.createElement('p');
+      if (className) p.className = className;
+      p.textContent = text;
+      feedback.append(p);
+      return p;
+    }
+
+    choicesBox.addEventListener('change', () => {
+      if (!checked) { checkBtn.disabled = false; hint.hidden = true; }
+    });
+
+    checkBtn.addEventListener('click', () => {
+      const selected = choicesBox.querySelector('input:checked');
+      if (!selected) return;
+      const q = questions[current];
+      const picked = Number(selected.value);
+      const isCorrect = q.choices[picked].correct;
+      const correctChoice = q.choices.find((c) => c.correct);
+      checked = true;
+
+      choicesBox.querySelectorAll('.choice').forEach((wrap, i) => {
+        wrap.querySelector('input').disabled = true;
+        const tag = document.createElement('span');
+        tag.className = 'choice-tag';
+        if (q.choices[i].correct) {
+          wrap.classList.add('is-correct');
+          tag.textContent = i === picked ? 'Your answer: correct' : 'Correct answer';
+          wrap.querySelector('label').append(tag);
+        } else if (i === picked) {
+          wrap.classList.add('is-wrong');
+          tag.textContent = 'Your answer';
+          wrap.querySelector('label').append(tag);
+        }
+      });
+
+      feedback.className = 'feedback ' + (isCorrect ? 'is-correct' : 'is-wrong');
+      feedback.replaceChildren();
+      addParagraph(isCorrect ? `Correct: ${correctChoice.text}` : `Not quite. The answer is: ${correctChoice.text}`, 'feedback-title');
+      addParagraph(q.explanation);
+      addParagraph(q.tryIt);
+      feedback.hidden = false;
+
+      checkBtn.hidden = true;
+      retryBtn.hidden = false;
+      nextBtn.hidden = false;
+      nextBtn.textContent = current === questions.length - 1 ? 'Back to question 1' : 'Next question';
+      setStage('observe');
+      if (hooks.onCheck) hooks.onCheck(q, isCorrect);
+      feedback.focus({ preventScroll: true });
+    });
+
+    retryBtn.addEventListener('click', () => {
+      renderQuestion();
+      const first = choicesBox.querySelector('input');
+      if (first) first.focus();
+    });
+
+    nextBtn.addEventListener('click', () => {
+      current = (current + 1) % questions.length;
+      renderQuestion();
+      prompt.scrollIntoView({ block: 'nearest' });
+    });
+
+    renderQuestion();
+
+    return {
+      notifyInteraction() {
+        if (!checked || observed) return;
+        observed = true;
+        setStage('done');
+        addParagraph('Observed: compare the live curve with the dotted reference curve.', 'feedback-observed');
+      }
+    };
+  }
+
+  /* =========================================================================
+     2. FIRST-ORDER SENSOR MATHEMATICS (pure functions, no page access)
+        Model: τ dy/dt + y = K x(t),  G(s) = K / (τs + 1), zero initial conditions.
+        Module 2 can add the frequency-response functions to this object.
+     ========================================================================= */
+  const FirstOrder = {
+    /** Step input x(t) = A:  y(t) = KA(1 − e^(−t/τ)). */
+    stepResponse(t, K, tau, A = 1) {
+      return K * A * (1 - Math.exp(-t / tau));
+    },
+
+    /** Ramp input x(t) = At:  y(t) = KA[t − τ(1 − e^(−t/τ))]. */
+    rampResponse(t, K, tau, A = 1) {
+      return K * A * (t - tau * (1 - Math.exp(-t / tau)));
+    },
+
+    /** Ramp tracking error e(t) = Kx(t) − y(t) = KAτ(1 − e^(−t/τ)) → KAτ. */
+    rampError(t, K, tau, A = 1) {
+      return K * A * tau * (1 - Math.exp(-t / tau));
+    },
+
+    /** Step error fraction f(t) = (KA − y(t)) / KA = e^(−t/τ). Independent of K and A. */
+    stepErrorFraction(t, tau) {
+      return Math.exp(-t / tau);
+    },
+
+    /** 10 %–90 % rise time of a first-order step response: τ ln 9. */
+    riseTime(tau) {
+      return tau * Math.log(9);
+    }
+  };
+
+  /* =========================================================================
+     3. MODULE 1: FIRST-ORDER TIME RESPONSE (user interface)
+     ========================================================================= */
+  function initModule1() {
+    const A = 1;                    // input amplitude, fixed (shown in the UI)
+    const SAMPLES_PER_TAU = 20;     // Δt = τ/20, so t = τ is sample 20 and t = 3τ is sample 60 exactly
+    const SPAN_IN_TAU = 6;          // the charts cover 0 … 6τ
+    const RAMP_MARK_IN_TAU = 4;     // the ramp error and lag brackets are drawn at t = 4τ
+    const LOG_AXIS_MIN = 1e-3;      // bottom of the logarithmic axis
+    const DEFAULTS = Object.freeze({ K: 1.0, tau: 2.0, input: 'step' });
+
+    // Current settings. The reference curve starts at the defaults and is
+    // hidden while it is identical to the live curve.
+    const state = {
+      K: DEFAULTS.K,
+      tau: DEFAULTS.tau,
+      input: DEFAULTS.input,
+      reference: { K: DEFAULTS.K, tau: DEFAULTS.tau }
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const ui = {
+      kSlider: $('m1-k'), kValue: $('m1-k-value'),
+      tauSlider: $('m1-tau'), tauValue: $('m1-tau-value'),
+      inputRadios: document.querySelectorAll('input[name="m1-input"]'),
+      inputHelp: $('m1-input-help'),
+      reset: $('m1-reset'), pin: $('m1-pin'), unpin: $('m1-unpin'), refStatus: $('m1-ref-status'),
+      chartTitle: $('m1-chart-title'), chartSub: $('m1-chart-sub'), paramChip: $('m1-param-chip'),
+      eqStep: $('m1-eq-step'), eqRamp: $('m1-eq-ramp'),
+      mainLegend: $('m1-main-legend'), mainCanvas: $('m1-main-chart'),
+      metricsStep: $('m1-metrics-step'), metricsRamp: $('m1-metrics-ramp'),
+      stepCallout: $('m1-step-callout'), rampCallout: $('m1-ramp-callout'), rampLive: $('m1-ramp-live'),
+      logLegend: $('m1-log-legend'), logCanvas: $('m1-log-chart'), logRampNote: $('m1-log-ramp-note'),
+      slopeChip: $('m1-slope-chip'), slopeTheory: $('m1-slope-theory'), slopeRead: $('m1-slope-read'),
+      tauEstimate: $('m1-tau-estimate'),
+      validationBody: $('m1-validation-body'), validationSummary: $('m1-validation-summary')
+    };
+
+    let mainChart = null;
+    let logChart = null;
+    let mainGuides = null;   // annotations for the main chart (read by the plugin)
+    let logGuides = null;    // annotations for the log chart
+
+    /* ---------- Predict, then check questions ---------- */
+    const QUESTIONS = [
+      {
+        prompt: 'What happens when the time constant τ increases while K stays constant?',
+        choices: [
+          { text: 'The sensor responds faster.', correct: false },
+          { text: 'The sensor responds more slowly.', correct: true },
+          { text: 'The sensor’s final step-response value increases.', correct: false }
+        ],
+        explanation: 'A larger τ means the sensor must store more energy for the same rate of exchange (more heat capacity, or more capacitance), so it closes the gap to K·x more slowly. The 63.2% point, the 95% point and the rise time all grow in proportion to τ. The final value KA does not depend on τ at all.',
+        tryIt: 'Your current curve is now pinned as the dotted reference. Drag the τ slider to a larger value: the reference now reaches its final value much earlier than the live curve.'
+      },
+      {
+        prompt: 'You double the gain K and keep τ the same. What happens to the time needed to reach 63.2% of the final value?',
+        choices: [
+          { text: 'It halves.', correct: false },
+          { text: 'It stays the same.', correct: true },
+          { text: 'It doubles.', correct: false }
+        ],
+        explanation: 'K scales the whole response vertically, so the final value becomes 2KA, but the timing is set only by τ. The output still reaches 63.2% of its new, larger final value at exactly t = τ.',
+        tryIt: 'Your current curve is pinned as the reference. Drag the K slider: the live curve grows taller or shorter, but its 63.2% marker stays on the t = τ gridline.'
+      },
+      {
+        prompt: 'For a ramp input, what happens to the steady-state error if τ doubles (K and A unchanged)?',
+        choices: [
+          { text: 'It halves.', correct: false },
+          { text: 'It does not change.', correct: false },
+          { text: 'It doubles.', correct: true }
+        ],
+        explanation: 'The steady-state error is e_ss = KAτ: the output follows the ideal ramp τ seconds late, and the ramp rises KA every second, so the gap is KA × τ. Doubling τ doubles both the time lag and the error.',
+        tryIt: 'Select Ramp input, then double τ and watch the steady-state error card double.'
+      }
+    ];
+
+    /* ---------- Model helpers ---------- */
+
+    /** Uniform time samples 0, Δt, 2Δt, …, 6τ with Δt = τ/20. */
+    function timeGrid(tau) {
+      const count = SAMPLES_PER_TAU * SPAN_IN_TAU;
+      const dt = tau / SAMPLES_PER_TAU;
+      return Array.from({ length: count + 1 }, (_, i) => i * dt);
+    }
+
+    /** Ideal gain-scaled input K·x(t). */
+    function idealOutput(t, K, input) {
+      return input === 'step' ? K * A : K * A * t;
+    }
+
+    /** Sensor output y(t) for the selected input type. */
+    function sensorOutput(t, K, tau, input) {
+      return input === 'step'
+        ? FirstOrder.stepResponse(t, K, tau, A)
+        : FirstOrder.rampResponse(t, K, tau, A);
+    }
+
+    /** The reference settings, or null when there is none or it matches the live curve. */
+    function visibleReference() {
+      const ref = state.reference;
+      if (!ref) return null;
+      const same = Math.abs(ref.K - state.K) < 1e-9 && Math.abs(ref.tau - state.tau) < 1e-9;
+      return same ? null : ref;
+    }
+
+    function referenceText(ref) {
+      return `K = ${ref.K.toFixed(1)}, τ = ${ref.tau.toFixed(1)} s`;
+    }
+
+    /* ---------- Charts ---------- */
+
+    /** Tooltip title: time, plus "= nτ" on samples that sit exactly on a gridline. */
+    function timeTitle(items) {
+      if (!items.length) return '';
+      const n = items[0].dataIndex / SAMPLES_PER_TAU;
+      const note = Number.isInteger(n) && n > 0 ? `   (t = ${n === 1 ? '' : n}τ)` : '';
+      return `t = ${fmt(items[0].parsed.x, 2)} s${note}`;
+    }
+
+    function createCharts() {
+      if (!CHARTS_AVAILABLE) {
+        document.querySelectorAll('[data-chart-fallback]').forEach((el) => { el.hidden = false; });
+        return;
+      }
+      applyChartDefaults();
+      const getTau = () => state.tau;
+      const baseOptions = () => ({
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        parsing: false,        // data is already { x, y }
+        normalized: true,      // x values are sorted and unique
+        interaction: { mode: 'index', intersect: false },
+        elements: { point: { radius: 0, hoverRadius: 4, hitRadius: 6, hoverBorderWidth: 2 } },
+        layout: { padding: { top: 6, right: 10 } }
+      });
+
+      mainChart = new Chart(ui.mainCanvas, {
+        type: 'line',
+        data: {
+          datasets: [
+            { role: 'ideal', label: 'Ideal input K·x(t)', data: [], borderColor: THEME.ideal, backgroundColor: THEME.ideal,
+              pointHoverBackgroundColor: '#fff', borderWidth: 1.75, borderDash: [6, 5], order: 1 },
+            { role: 'output', label: 'Sensor output y(t)', data: [], borderColor: THEME.output, backgroundColor: THEME.output,
+              pointHoverBackgroundColor: '#fff', borderWidth: 2.75, order: 0 },
+            { role: 'reference', label: 'Reference', data: [], borderColor: THEME.reference, backgroundColor: THEME.reference,
+              pointHoverBackgroundColor: '#fff', borderWidth: 2, borderDash: [2, 3], order: 2, hidden: true }
+          ]
+        },
+        options: Object.assign(baseOptions(), {
+          scales: {
+            x: tauTimeAxis(getTau, SPAN_IN_TAU),
+            y: {
+              beginAtZero: true,
+              grace: '8%',
+              title: { display: true, text: 'Output y(t)', font: { weight: '600' } },
+              grid: { color: THEME.grid },
+              border: { color: THEME.axis }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: Object.assign(tooltipStyle(), {
+              itemSort: (a, b) => a.datasetIndex - b.datasetIndex,
+              callbacks: { title: timeTitle, label: mainTooltipLabel, footer: mainTooltipFooter }
+            })
+          }
+        }),
+        plugins: [createGuidesPlugin(() => mainGuides)]
+      });
+
+      logChart = new Chart(ui.logCanvas, {
+        type: 'line',
+        data: {
+          datasets: [
+            { role: 'fraction', label: 'Error fraction f(t)', yAxisID: 'y', data: [], borderColor: THEME.output,
+              backgroundColor: THEME.output, pointHoverBackgroundColor: '#fff', borderWidth: 2.75, order: 0 },
+            { role: 'reference', label: 'Reference', yAxisID: 'y', data: [], borderColor: THEME.reference,
+              backgroundColor: THEME.reference, pointHoverBackgroundColor: '#fff', borderWidth: 2, borderDash: [2, 3], order: 1, hidden: true }
+          ]
+        },
+        options: Object.assign(baseOptions(), {
+          scales: {
+            x: tauTimeAxis(getTau, SPAN_IN_TAU),
+            // Left axis: the error fraction itself, decades 1 … 0.001 (log scale, never zero).
+            y: {
+              type: 'logarithmic', position: 'left', min: LOG_AXIS_MIN, max: 1,
+              title: { display: true, text: 'Error fraction f(t), log scale', font: { weight: '600' } },
+              grid: { drawOnChartArea: false },
+              border: { color: THEME.axis },
+              afterBuildTicks: (axis) => { axis.ticks = [1, 0.1, 0.01, 0.001].map((value) => ({ value })); },
+              ticks: { callback: (value) => String(value) }
+            },
+            // Right axis: the same scale labelled as ln f = 0, −1, …, −6. Its gridlines meet the
+            // τ gridlines on the curve, which makes the slope −1/τ visible.
+            yLn: {
+              type: 'logarithmic', position: 'right', min: LOG_AXIS_MIN, max: 1,
+              title: { display: true, text: 'ln f(t)', font: { weight: '600' } },
+              grid: { color: THEME.grid },
+              border: { color: THEME.axis },
+              afterBuildTicks: (axis) => { axis.ticks = [0, 1, 2, 3, 4, 5, 6].map((n) => ({ value: Math.exp(-n) })); },
+              ticks: { callback: (value) => fmt(Math.log(value), 0) }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: Object.assign(tooltipStyle(), {
+              itemSort: (a, b) => a.datasetIndex - b.datasetIndex,
+              callbacks: {
+                title: timeTitle,
+                label: (item) => ` ${item.dataset.label}: ${item.parsed.y.toPrecision(3)}`,
+                footer: (items) => {
+                  const f = items.find((i) => i.dataset.role === 'fraction');
+                  return f ? `ln f(t) = ${fmt(Math.log(f.parsed.y), 3)} = −t/τ` : '';
+                }
+              }
+            })
+          }
+        }),
+        plugins: [createGuidesPlugin(() => logGuides)]
+      });
+    }
+
+    function mainTooltipLabel(item) {
+      const y = item.parsed.y;
+      if (item.dataset.role === 'output' && state.input === 'step') {
+        return ` Sensor output y(t): ${fmt(y, 3)}  (${fmt((100 * y) / (state.K * A), 1)}% of KA)`;
+      }
+      return ` ${item.dataset.label}: ${fmt(y, 3)}`;
+    }
+
+    function mainTooltipFooter(items) {
+      const ideal = items.find((i) => i.dataset.role === 'ideal');
+      const output = items.find((i) => i.dataset.role === 'output');
+      if (!ideal || !output) return '';
+      if (state.input === 'ramp') {
+        return [
+          `Tracking error e(t) = Kx − y = ${fmt(ideal.parsed.y - output.parsed.y, 3)}`,
+          `Approaches KAτ = ${fmt(state.K * A * state.tau, 3)} as t grows`
+        ];
+      }
+      const n = output.dataIndex / SAMPLES_PER_TAU;
+      if (n === 1) return 'One time constant: 63.2% of the final value';
+      if (n === 3) return 'Three time constants: 95% of the final value';
+      return '';
+    }
+
+    /** Step annotations: drop lines and markers at τ and 3τ, final-value label. */
+    function stepGuides(K, tau) {
+      const KA = K * A;
+      const yTau = FirstOrder.stepResponse(tau, K, tau, A);
+      const y3Tau = FirstOrder.stepResponse(3 * tau, K, tau, A);
+      const pctTau = fmt((100 * yTau) / KA, 1);
+      const pct3Tau = fmt((100 * y3Tau) / KA, 1);
+      const dropLines = (x, y, color) => [
+        { x1: x, y1: 0, x2: x, y2: y, color: hexToRgba(color, 0.75), dash: [3, 4] },
+        { x1: 0, y1: y, x2: x, y2: y, color: hexToRgba(color, 0.75), dash: [3, 4] }
+      ];
+      return {
+        lines: [...dropLines(tau, yTau, THEME.tau), ...dropLines(3 * tau, y3Tau, THEME.tau3)],
+        markers: [
+          { x: tau, y: yTau, color: THEME.tau },
+          { x: 3 * tau, y: y3Tau, color: THEME.tau3 }
+        ],
+        labels: [
+          { x: tau, y: yTau, dx: 10, dy: 15, text: `${pctTau}% of KA at t = τ`, short: `${pctTau}%`, color: THEME.tau },
+          { x: 3 * tau, y: y3Tau, dx: 10, dy: 15, text: `${pct3Tau}% of KA at t = 3τ`, short: `${pct3Tau}%`, color: THEME.tau3 },
+          { x: SPAN_IN_TAU * tau, y: KA, dx: -2, dy: -14, align: 'right',
+            text: `Final value KA = ${fmt(KA, 3)}`, short: `KA = ${fmt(KA, 3)}`, color: THEME.ideal }
+        ]
+      };
+    }
+
+    /** Ramp annotations: vertical error bracket and horizontal lag bracket at t = 4τ. */
+    function rampGuides(K, tau) {
+      const KA = K * A;
+      const t1 = RAMP_MARK_IN_TAU * tau;
+      const y1 = FirstOrder.rampResponse(t1, K, tau, A);   // sensor output at t1
+      const ideal1 = KA * t1;                              // ideal output at t1
+      const tSame = y1 / KA;                               // when the ideal ramp had the value y1
+      return {
+        segments: [
+          { x1: t1, y1: y1, x2: t1, y2: ideal1, color: THEME.error, width: 2.5, caps: true },
+          { x1: tSame, y1: y1, x2: t1, y2: y1, color: THEME.tau, width: 2.5, caps: true }
+        ],
+        labels: [
+          { x: t1, y: y1, dx: 10, dy: 14, text: `Error ≈ KAτ = ${fmt(KA * tau, 2)}`, short: '≈ KAτ', color: THEME.errorText },
+          { x: tSame, y: y1, dx: -8, dy: -13, align: 'right', text: `Lag ≈ τ = ${fmt(tau, 1)} s`, short: '≈ τ', color: THEME.tau }
+        ]
+      };
+    }
+
+    /** Log-chart annotations: markers at τ and 3τ and a slope triangle from τ to 2τ. */
+    function errorFractionGuides(tau) {
+      const f1 = FirstOrder.stepErrorFraction(tau, tau);       // e^−1
+      const f2 = FirstOrder.stepErrorFraction(2 * tau, tau);   // e^−2
+      const f3 = FirstOrder.stepErrorFraction(3 * tau, tau);   // e^−3
+      return {
+        segments: [
+          { x1: tau, y1: f1, x2: 2 * tau, y2: f1, color: THEME.error, width: 2 },
+          { x1: 2 * tau, y1: f1, x2: 2 * tau, y2: f2, color: THEME.error, width: 2 }
+        ],
+        markers: [
+          { x: tau, y: f1, color: THEME.tau },
+          { x: 3 * tau, y: f3, color: THEME.tau3 }
+        ],
+        labels: [
+          { x: 1.5 * tau, y: f1, dy: -13, align: 'center', text: 'Δt = τ', color: THEME.errorText },
+          { x: 2 * tau, y: Math.sqrt(f1 * f2), dx: 9, text: 'Δ ln f = −1', color: THEME.errorText },
+          { x: tau, y: f1, dx: -10, dy: 15, align: 'right', text: `${fmt(100 * f1, 1)}% left at t = τ`, short: `${fmt(100 * f1, 1)}%`, color: THEME.tau },
+          { x: 3 * tau, y: f3, dx: -10, dy: 15, align: 'right', text: `${fmt(100 * f3, 1)}% left at t = 3τ`, short: `${fmt(100 * f3, 1)}%`, color: THEME.tau3 }
+        ]
+      };
+    }
+
+    function mainLegendItems(isStep, ref) {
+      const items = isStep
+        ? [
+            { label: 'Ideal input K·x(t) = KA', kind: 'dashed', color: THEME.ideal },
+            { label: 'Sensor output y(t)', kind: 'line', color: THEME.output },
+            { label: '63.2% point at t = τ', kind: 'dot', color: THEME.tau },
+            { label: '95% point at t = 3τ', kind: 'dot', color: THEME.tau3 }
+          ]
+        : [
+            { label: 'Ideal ramp K·x(t) = KAt', kind: 'dashed', color: THEME.ideal },
+            { label: 'Sensor output y(t)', kind: 'line', color: THEME.output },
+            { label: 'Error at t = 4τ (vertical, output units)', kind: 'vbar', color: THEME.error },
+            { label: 'Lag at t = 4τ (horizontal, seconds)', kind: 'hbar', color: THEME.tau }
+          ];
+      if (ref) items.push({ label: `Reference output (${referenceText(ref)})`, kind: 'dotted', color: THEME.reference });
+      return items;
+    }
+
+    /* ---------- Validation (official test 1, first-order step) ---------- */
+    function validationChecks(K, tau) {
+      const KA = K * A;
+      const tolerance = 0.001;
+      const cases = [
+        { name: 'Test 1a: step output at t = τ', time: tau, expected: 0.632 },
+        { name: 'Test 1b: step output at t = 3τ', time: 3 * tau, expected: 0.950 }
+      ];
+      return cases.map(({ name, time, expected }) => {
+        const y = FirstOrder.stepResponse(time, K, tau, A);   // the real formula, not a stored number
+        const ratio = y / KA;
+        return {
+          name,
+          detail: `t = ${fmt(time, 2)} s with K = ${K.toFixed(1)}, τ = ${tau.toFixed(1)} s`,
+          expected: { main: `${expected.toFixed(3)} KA`, sub: `= ${fmt(expected * KA, 3)}` },
+          calculated: { main: `${ratio.toFixed(4)} KA`, sub: `y = ${fmt(y, 4)}` },
+          pass: Math.abs(ratio - expected) <= tolerance
+        };
+      });
+    }
+
+    /* ---------- Render everything from the current state ---------- */
+    function render() {
+      const { K, tau, input } = state;
+      const KA = K * A;
+      const isStep = input === 'step';
+      const ref = visibleReference();
+      const times = timeGrid(tau);
+
+      // Headings and equations
+      ui.chartTitle.textContent = isStep ? 'Step response' : 'Ramp response';
+      ui.chartSub.textContent = isStep
+        ? 'How the sensor output follows a sudden change of input.'
+        : 'How the sensor output trails a steadily rising input.';
+      ui.paramChip.textContent = `K = ${K.toFixed(1)}, τ = ${tau.toFixed(1)} s, A = 1`;
+      ui.eqStep.hidden = !isStep;
+      ui.eqRamp.hidden = isStep;
+      renderLegend(ui.mainLegend, mainLegendItems(isStep, ref));
+
+      // Main chart
+      if (mainChart) {
+        const [idealSet, outputSet, refSet] = mainChart.data.datasets;
+        idealSet.label = isStep ? 'Ideal input K·x(t)' : 'Ideal ramp K·x(t)';
+        idealSet.data = times.map((t) => ({ x: t, y: idealOutput(t, K, input) }));
+        outputSet.data = times.map((t) => ({ x: t, y: sensorOutput(t, K, tau, input) }));
+        refSet.hidden = !ref;
+        refSet.label = ref ? `Reference (${referenceText(ref)})` : 'Reference';
+        refSet.data = ref ? times.map((t) => ({ x: t, y: sensorOutput(t, ref.K, ref.tau, input) })) : [];
+        mainChart.options.scales.x.max = SPAN_IN_TAU * tau;
+        mainGuides = isStep ? stepGuides(K, tau) : rampGuides(K, tau);
+        mainChart.update('none');
+      }
+
+      // Metrics and explanation cards
+      ui.metricsStep.hidden = !isStep;
+      ui.stepCallout.hidden = !isStep;
+      ui.metricsRamp.hidden = isStep;
+      ui.rampCallout.hidden = isStep;
+      const yTau = FirstOrder.stepResponse(tau, K, tau, A);
+      const y3Tau = FirstOrder.stepResponse(3 * tau, K, tau, A);
+      const ess = FirstOrder.rampError(Infinity, K, tau, A);   // e(t) as t → ∞ equals KAτ
+      if (isStep) {
+        $('m1-step-tau').textContent = fmt(tau, 2);
+        $('m1-step-final').textContent = fmt(KA, 3);
+        $('m1-step-ytau').textContent = fmt(yTau, 3);
+        $('m1-step-ytau-note').textContent = `${fmt((100 * yTau) / KA, 1)}% of KA, reached at t = ${fmt(tau, 2)} s.`;
+        $('m1-step-y3tau').textContent = fmt(y3Tau, 3);
+        $('m1-step-y3tau-note').textContent = `${fmt((100 * y3Tau) / KA, 1)}% of KA, reached at t = ${fmt(3 * tau, 2)} s.`;
+        $('m1-step-rise').textContent = fmt(FirstOrder.riseTime(tau), 2);
+      } else {
+        $('m1-ramp-tau').textContent = fmt(tau, 2);
+        $('m1-ramp-slope').textContent = fmt(KA, 2);
+        $('m1-ramp-ess').textContent = fmt(ess, 2);
+        $('m1-ramp-lag').textContent = fmt(tau, 2);
+        ui.rampLive.textContent = `With K = ${K.toFixed(1)} and τ = ${tau.toFixed(1)} s, the ideal output climbs ${fmt(KA, 2)} units every second and the sensor is ${fmt(tau, 2)} s behind, so it sits ${fmt(KA, 2)} × ${fmt(tau, 2)} = ${fmt(ess, 2)} units below the ideal line.`;
+      }
+
+      // Logarithmic error-fraction chart (always the STEP error fraction)
+      const fractions = times.map((t) => FirstOrder.stepErrorFraction(t, tau));
+      const i1 = SAMPLES_PER_TAU;
+      const i3 = 3 * SAMPLES_PER_TAU;
+      const slopeRead = (Math.log(fractions[i3]) - Math.log(fractions[i1])) / (times[i3] - times[i1]);
+      const slopeTheory = -1 / tau;
+      ui.slopeChip.textContent = `slope of ln f = ${fmt(slopeTheory, 3)} s⁻¹`;
+      ui.slopeTheory.textContent = `${fmt(slopeTheory, 3)} s⁻¹`;
+      ui.slopeRead.textContent = `${fmt(slopeRead, 3)} s⁻¹`;
+      ui.tauEstimate.textContent = `${fmt(-1 / slopeRead, 2)} s`;
+      ui.logRampNote.hidden = isStep;
+      const logRef = ref && Math.abs(ref.tau - tau) > 1e-9 ? ref : null;   // K does not change f(t)
+      const logLegend = [
+        { label: 'Error fraction f(t), step response', kind: 'line', color: THEME.output },
+        { label: 'Slope triangle: ln f falls by 1 per τ', kind: 'hbar', color: THEME.error }
+      ];
+      if (logRef) logLegend.push({ label: `Reference (τ = ${logRef.tau.toFixed(1)} s)`, kind: 'dotted', color: THEME.reference });
+      renderLegend(ui.logLegend, logLegend);
+      if (logChart) {
+        const [fractionSet, refSet] = logChart.data.datasets;
+        fractionSet.data = times.map((t, i) => ({ x: t, y: fractions[i] }));
+        refSet.hidden = !logRef;
+        refSet.label = logRef ? `Reference (τ = ${logRef.tau.toFixed(1)} s)` : 'Reference';
+        refSet.data = logRef
+          ? times.map((t) => {
+              const f = FirstOrder.stepErrorFraction(t, logRef.tau);
+              return { x: t, y: f < 1e-4 ? null : f };    // far below the axis: leave a gap
+            })
+          : [];
+        logChart.options.scales.x.max = SPAN_IN_TAU * tau;
+        logGuides = errorFractionGuides(tau);
+        logChart.update('none');
+      }
+
+      // Validation table
+      const checks = validationChecks(K, tau);
+      const passed = renderValidation(ui.validationBody, checks);
+      ui.validationSummary.textContent = `${passed} of ${checks.length} passed`;
+      ui.validationSummary.className = 'chip ' + (passed === checks.length ? 'chip--pass' : 'chip--fail');
+
+      // Reference controls
+      const stored = state.reference;
+      if (!stored) {
+        ui.refStatus.textContent = 'No reference curve. Pin the current curve to compare it with later settings.';
+      } else if (!ref) {
+        ui.refStatus.textContent = `Reference: ${referenceText(stored)}. It matches the live curve, so it is hidden until you move a slider.`;
+      } else {
+        ui.refStatus.textContent = `Dotted reference: ${referenceText(stored)}.`;
+      }
+      ui.pin.disabled = Boolean(stored) && !ref;
+      ui.unpin.disabled = !stored;
+
+      // Text descriptions of the charts for screen readers
+      ui.mainCanvas.setAttribute('aria-label', isStep
+        ? `Step response for K = ${K.toFixed(1)} and τ = ${tau.toFixed(1)} s. The output rises from 0 toward ${fmt(KA, 3)}, reaching ${fmt(yTau, 3)} at t = ${fmt(tau, 2)} s and ${fmt(y3Tau, 3)} at t = ${fmt(3 * tau, 2)} s.`
+        : `Ramp response for K = ${K.toFixed(1)} and τ = ${tau.toFixed(1)} s. The output runs parallel to the ideal ramp of slope ${fmt(KA, 2)} per second, ${fmt(tau, 2)} s behind it, with a steady-state error of ${fmt(ess, 2)}.`);
+      ui.logCanvas.setAttribute('aria-label',
+        `Step-response error fraction on a logarithmic axis for τ = ${tau.toFixed(1)} s: a straight line with slope ${fmt(slopeTheory, 3)} per second.`);
+    }
+
+    /* ---------- Controls ---------- */
+
+    /** Paint the slider track up to the thumb. */
+    function setSliderFill(slider) {
+      const min = Number(slider.min);
+      const max = Number(slider.max);
+      const pct = ((Number(slider.value) - min) / (max - min)) * 100;
+      slider.style.setProperty('--fill', `${pct}%`);
+    }
+
+    /** Copy the state into the controls' readouts and accessible labels. */
+    function syncControls() {
+      ui.kSlider.value = String(state.K);
+      ui.tauSlider.value = String(state.tau);
+      ui.kValue.textContent = state.K.toFixed(1);
+      ui.tauValue.textContent = `${state.tau.toFixed(1)} s`;
+      ui.kSlider.setAttribute('aria-valuetext', `K equals ${state.K.toFixed(1)}`);
+      ui.tauSlider.setAttribute('aria-valuetext', `${state.tau.toFixed(1)} seconds`);
+      setSliderFill(ui.kSlider);
+      setSliderFill(ui.tauSlider);
+      ui.inputRadios.forEach((radio) => { radio.checked = radio.value === state.input; });
+      ui.inputHelp.textContent = state.input === 'step'
+        ? 'x(t) = A for t ≥ 0: a sudden change, like plunging a thermometer into tea.'
+        : 'x(t) = A·t: a steadily rising input, like an oven warming up at a constant rate.';
+    }
+
+    function onControlChange() {
+      syncControls();
+      render();
+      predict.notifyInteraction();
+    }
+
+    ui.kSlider.addEventListener('input', () => { state.K = Number(ui.kSlider.value); onControlChange(); });
+    ui.tauSlider.addEventListener('input', () => { state.tau = Number(ui.tauSlider.value); onControlChange(); });
+    ui.inputRadios.forEach((radio) => radio.addEventListener('change', () => {
+      if (radio.checked) { state.input = radio.value; onControlChange(); }
+    }));
+
+    ui.reset.addEventListener('click', () => {
+      state.K = DEFAULTS.K;
+      state.tau = DEFAULTS.tau;
+      state.input = DEFAULTS.input;
+      state.reference = { K: DEFAULTS.K, tau: DEFAULTS.tau };
+      syncControls();
+      render();
+    });
+
+    function pinCurrentCurve() {
+      state.reference = { K: state.K, tau: state.tau };
+      render();
+    }
+    ui.pin.addEventListener('click', pinCurrentCurve);
+    ui.unpin.addEventListener('click', () => { state.reference = null; render(); });
+
+    // "Predict, then check": checking pins the current curve so the user can compare after moving a slider.
+    const predict = createPredictCheck($('m1-predict'), QUESTIONS, { onCheck: pinCurrentCurve });
+
+    createCharts();
+    syncControls();
+    render();
+  }
+
+  /* =========================================================================
+     4. START-UP — teammates: call initModule2(), initModule3(), … here.
+     ========================================================================= */
+  initModule1();
+  </script>
+</body>
+</html>
