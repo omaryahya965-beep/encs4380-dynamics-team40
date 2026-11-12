@@ -437,6 +437,7 @@
     
 
     retryBtn.addEventListener('click', () => {
+      current = 0;
       renderQuestion();
       const first = choicesBox.querySelector('input');
       if (first) first.focus();

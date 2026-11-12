@@ -2934,9 +2934,10 @@
     });
 
     // Fix: these two listeners were outside this function, where retryBtn does not exist, so the
-    // whole script stopped with a ReferenceError. "Try again" now resets the same question, and
+    // whole script stopped with a ReferenceError. "Try again" now returns to question 1, and
     // "Next question" (which had no listener at all) moves to the next one.
     retryBtn.addEventListener('click', () => {
+      current = 0;
       renderQuestion();
       const first = choicesBox.querySelector('input');
       if (first) first.focus();
