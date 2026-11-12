@@ -436,6 +436,20 @@
 
     
 
+    retryBtn.addEventListener('click', () => {
+      renderQuestion();
+      const first = choicesBox.querySelector('input');
+      if (first) first.focus();
+    });
+
+    nextBtn.addEventListener('click', () => {
+      if (current >= questions.length - 1) return;
+      current += 1;
+      renderQuestion();
+      const first = choicesBox.querySelector('input');
+      if (first) first.focus();
+    });
+
     renderQuestion();
 
     return {
@@ -446,12 +460,7 @@
       }
     };
   }
-  retryBtn.addEventListener('click', () => {
-  current = 0;
-  renderQuestion();
-  const first = choicesBox.querySelector('input');
-  if (first) first.focus();
-});
+
 
 
     // Our three questions.
