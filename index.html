@@ -3,18 +3,128 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Module 01: First-Order Time Response | ENCS4380 Dynamic Characteristics Toolkit</title>
-  <meta name="description" content="Interactive first-order sensor time response for ENCS4380 Interfacing Techniques, Birzeit University: step and ramp inputs, the 63.2% and 95% points, ramp lag and steady-state error, and the logarithmic error-fraction plot.">
+  <title>Dynamic Characteristics Interactive Toolkit | ENCS4380 Interfacing Techniques</title>
+  <meta name="description" content="ENCS4380 Homework 1, Birzeit University: interactive modules on first-order time and frequency response, second-order response and state space, and a guess-the-sensor challenge.">
   <meta name="theme-color" content="#ffffff">
-  <!-- Inline SVG favicon: prevents a 404 request for /favicon.ico on GitHub Pages -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f172a'/%3E%3Cpath d='M6 25C9 14 14 10 26 9' fill='none' stroke='%232dd4bf' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <!--
+    ENCS4380 Homework 1: Dynamic Characteristics Interactive Toolkit (one self-contained file)
+    Structure of this file:
+      Styles:   shell styles, then each module's styles scoped to its panel
+                (#module-1 ... #module-4; Modules 1 and 3 share one base)
+      Page:     header, module tabs, four panels (one module each), footer
+      Scripts:  Chart.js 4.4.1 (loaded once), navigation, shared helpers,
+                then one script per module, each wrapped in its own function
+  -->
   <style>
+    /* =====================================================================
+       TOOLKIT SHELL: page, header, module tabs and footer.
+       Each module's own CSS follows, scoped to its panel (#module-1 ...
+       #module-4), so no module's rules can reach another module.
+       ===================================================================== */
+    :root {
+      color-scheme: light;
+      --tk-bg: #f8fafc;
+      --tk-surface: #ffffff;
+      --tk-border: #e2e8f0;
+      --tk-text: #334155;
+      --tk-muted: #64748b;
+      --tk-heading: #0f172a;
+      --tk-accent: #0f766e;
+      --tk-accent-soft: #f0fdfa;
+      --tk-nav-h: 0px;                 /* height of the sticky tab bar, measured by the script */
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html { -webkit-text-size-adjust: 100%; scroll-padding-top: calc(var(--tk-nav-h) + 12px); }   /* scrolled-to content clears the sticky tabs */
+    body {
+      margin: 0;
+      background: var(--tk-bg);
+      color: var(--tk-text);
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    .tk-container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+    @media (min-width: 768px) { .tk-container { padding: 0 28px; } }
+
+    .tk-skip {
+      position: absolute; left: 12px; top: -60px; z-index: 50;
+      background: var(--tk-heading); color: #fff; padding: 8px 14px;
+      border-radius: 8px; text-decoration: none; font-weight: 600;
+    }
+    .tk-skip:focus { top: 12px; }
+
+    .tk-header { background: var(--tk-surface); }
+    .tk-header-inner { padding-top: 22px; padding-bottom: 16px; }
+    .tk-course { margin: 0; font-size: 14px; font-weight: 600; color: var(--tk-muted); }
+    .tk-code { color: var(--tk-accent); font-weight: 700; letter-spacing: 0.02em; }
+    .tk-header h1 {
+      margin: 6px 0 0; color: var(--tk-heading); font-weight: 750;
+      font-size: clamp(24px, 3.3vw, 34px); line-height: 1.2; letter-spacing: -0.022em;
+    }
+    .tk-meta { margin: 6px 0 0; font-size: 14px; color: var(--tk-muted); }
+
+    /* Module tabs: one row on tablets and desktops (sticky), a 2 x 2 grid on phones */
+    .tk-nav {
+      position: relative; z-index: 30;
+      background: rgba(255, 255, 255, 0.97);
+      border-top: 1px solid var(--tk-border); border-bottom: 1px solid var(--tk-border);
+    }
+    .tk-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+    .tk-tab {
+      display: flex; align-items: center; gap: 10px; min-height: 54px; padding: 10px 6px;
+      background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px;
+      font: inherit; font-size: 14px; font-weight: 600; color: var(--tk-muted);
+      text-align: left; line-height: 1.3; cursor: pointer;
+    }
+    .tk-tab:hover { color: var(--tk-heading); }
+    .tk-tab[aria-selected="true"] { color: var(--tk-heading); border-bottom-color: var(--tk-accent); }
+    .tk-tab:focus-visible { outline: 2px solid var(--tk-accent); outline-offset: -3px; border-radius: 8px; }
+    .tk-tab-num {
+      flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+      border: 1.5px solid #cbd5e1; font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums;
+    }
+    .tk-tab[aria-selected="true"] .tk-tab-num { background: var(--tk-accent); border-color: var(--tk-accent); color: #fff; }
+    .tk-tab-short { display: none; }
+    @media (min-width: 768px) { .tk-nav { position: sticky; top: 0; } }
+    @media (max-width: 767px) {
+      .tk-tabs { grid-template-columns: 1fr 1fr; gap: 6px; padding: 10px 0; }
+      .tk-tab {
+        min-height: 44px; padding: 8px 10px; gap: 8px; font-size: 13.5px;
+        border: 1px solid var(--tk-border); border-radius: 10px; margin: 0;
+      }
+      .tk-tab[aria-selected="true"] { border-color: var(--tk-accent); background: var(--tk-accent-soft); }
+      .tk-tab-long { display: none; }
+      .tk-tab-short { display: inline; }
+    }
+
+    .tk-panel { outline: none; }
+    .tk-panel-head { padding-top: 26px; }
+    .tk-panel-title {
+      margin: 0; color: var(--tk-heading); font-weight: 700;
+      font-size: clamp(20px, 2.4vw, 24px); line-height: 1.25; letter-spacing: -0.015em;
+    }
+    .tk-noscript { margin: 16px 0 0; padding: 12px 16px; border-radius: 10px; background: #fef2f2; color: #b91c1c; }
+    .tk-footer { margin-top: 32px; border-top: 1px solid var(--tk-border); background: var(--tk-surface); }
+    .tk-footer-inner {
+      display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 24px;
+      padding-top: 20px; padding-bottom: 26px; font-size: 13.5px; color: var(--tk-muted);
+    }
+    .tk-footer p { margin: 0; }
+    .tk-footer strong { color: var(--tk-heading); }
+
+    /* =====================================================================
+       MODULES 1 AND 3: shared base styles (written for Module 1)
+       ===================================================================== */
+
     /* =====================================================================
        SHARED STYLES: design tokens and components reused by every module.
        Teammates: reuse these classes (.card, .btn, .metric, .legend, ...)
        in Modules 2-4 so the whole toolkit looks consistent.
        ===================================================================== */
-    :root {
+    :is(#module-1, #module-3) {
       color-scheme: light;
       --bg: #f8fafc;
       --surface: #ffffff;
@@ -44,13 +154,15 @@
       --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     }
 
-    *, *::before, *::after { box-sizing: border-box; }
-    [hidden] { display: none !important; }   /* keep the hidden attribute stronger than display rules */
+    :is(#module-1, #module-3) *,
+:is(#module-1, #module-3) *::before,
+:is(#module-1, #module-3) *::after { box-sizing: border-box; }
+    :is(#module-1, #module-3) [hidden] { display: none !important; }   /* keep the hidden attribute stronger than display rules */
 
-    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
-    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }
+    :is(#module-1, #module-3) { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    @media (prefers-reduced-motion: reduce) { :is(#module-1, #module-3) { scroll-behavior: auto; } :is(#module-1, #module-3) * { transition: none !important; } }
 
-    body {
+    :is(#module-1, #module-3) {
       margin: 0;
       background: var(--bg);
       color: var(--text);
@@ -59,380 +171,682 @@
       line-height: 1.6;
       -webkit-font-smoothing: antialiased;
     }
-    h1, h2, h3 { color: var(--heading); line-height: 1.25; margin: 0; }
-    p { margin: 0; }
-    strong { color: var(--heading); font-weight: 650; }
-    code {
+    :is(#module-1, #module-3) h1,
+:is(#module-1, #module-3) h2,
+:is(#module-1, #module-3) h3 { color: var(--heading); line-height: 1.25; margin: 0; }
+    :is(#module-1, #module-3) p { margin: 0; }
+    :is(#module-1, #module-3) strong { color: var(--heading); font-weight: 650; }
+    :is(#module-1, #module-3) code {
       font-family: var(--font-mono); font-size: 0.86em;
       background: var(--slate-100); border: 1px solid var(--slate-200);
       border-radius: 5px; padding: 0.05em 0.35em;
     }
 
-    .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 16px; }
-    @media (min-width: 768px) { .container { padding: 0 28px; } }
+    :is(#module-1, #module-3) .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+    @media (min-width: 768px) { :is(#module-1, #module-3) .container { padding: 0 28px; } }
 
-    .skip-link {
-      position: absolute; left: 12px; top: -60px; z-index: 20;
-      background: var(--heading); color: #fff; padding: 8px 14px;
-      border-radius: var(--radius-sm); text-decoration: none; font-weight: 600;
-    }
-    .skip-link:focus { top: 12px; }
+    
+    
 
     /* ---------- Math typography (equations rendered with HTML, no extra library) ---------- */
-    .math { font-family: var(--font-math); font-size: 1.08em; color: var(--heading); white-space: nowrap; }
-    .math i { font-style: italic; }
-    .math sup { font-size: 0.72em; }
-    .frac {
+    :is(#module-1, #module-3) .math { font-family: var(--font-math); font-size: 1.08em; color: var(--heading); white-space: nowrap; }
+    :is(#module-1, #module-3) .math i { font-style: italic; }
+    :is(#module-1, #module-3) .math sup { font-size: 0.72em; }
+    :is(#module-1, #module-3) .frac {
       display: inline-flex; flex-direction: column; align-items: center;
       vertical-align: middle; margin: 0 0.18em; line-height: 1.15; font-size: 0.94em;
     }
-    .frac > span { padding: 0 0.22em; }
-    .frac > span:first-child { border-bottom: 1px solid currentColor; }
+    :is(#module-1, #module-3) .frac > span { padding: 0 0.22em; }
+    :is(#module-1, #module-3) .frac > span:first-child { border-bottom: 1px solid currentColor; }
 
     /* ---------- Header ---------- */
-    .site-header { background: var(--surface); border-bottom: 1px solid var(--slate-200); }
-    .header-inner { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 24px 0 22px; }
-    .course-line { font-size: 14px; font-weight: 600; color: var(--muted); }
-    .course-code { color: var(--accent); font-weight: 700; letter-spacing: 0.02em; }
-    .course-sep { color: var(--slate-300); margin: 0 0.35em; }
-    h1 { font-size: clamp(25px, 3.4vw, 34px); letter-spacing: -0.022em; margin-top: 6px; font-weight: 750; }
-    .module-line { margin-top: 6px; font-size: clamp(16px, 1.8vw, 18px); font-weight: 600; color: #1e293b; }
-    .meta-line { margin-top: 4px; font-size: 14px; color: var(--muted); }
-    .header-badge {
-      flex: none; border: 1px solid var(--slate-200); background: var(--bg);
-      border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 600; color: var(--muted);
-    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
     /* ---------- Layout ---------- */
-    .module { display: grid; gap: 20px; padding: 24px 0 8px; }
-    .workspace { display: grid; gap: 20px; align-items: start; }
-    .workspace-main { display: grid; gap: 20px; min-width: 0; }
+    :is(#module-1, #module-3) .module { display: grid; gap: 20px; padding: 24px 0 8px; }
+    :is(#module-1, #module-3) .workspace { display: grid; gap: 20px; align-items: start; }
+    :is(#module-1, #module-3) .workspace-main { display: grid; gap: 20px; min-width: 0; }
     @media (min-width: 1024px) {
-      .workspace { grid-template-columns: 296px minmax(0, 1fr); }
-      .controls { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
+      :is(#module-1, #module-3) .workspace { grid-template-columns: 296px minmax(0, 1fr); }
+      :is(#module-1, #module-3) .controls { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
     }
 
     /* ---------- Cards and shared text ---------- */
-    .card {
+    :is(#module-1, #module-3) .card {
       background: var(--surface); border: 1px solid var(--slate-200);
       border-radius: var(--radius-lg); box-shadow: var(--shadow); padding: 20px; min-width: 0;
     }
-    @media (min-width: 768px) { .card { padding: 24px; } }
-    .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px 16px; flex-wrap: wrap; margin-bottom: 14px; }
-    .card-head h2 { font-size: 19px; letter-spacing: -0.01em; }
-    .card-sub { margin-top: 3px; font-size: 14px; color: var(--muted); }
-    .card-text { font-size: 14.5px; max-width: 78ch; }
-    .card-text + .card-text { margin-top: 8px; }
-    .chip {
+    @media (min-width: 768px) { :is(#module-1, #module-3) .card { padding: 24px; } }
+    :is(#module-1, #module-3) .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px 16px; flex-wrap: wrap; margin-bottom: 14px; }
+    :is(#module-1, #module-3) .card-head h2 { font-size: 19px; letter-spacing: -0.01em; }
+    :is(#module-1, #module-3) .card-sub { margin-top: 3px; font-size: 14px; color: var(--muted); }
+    :is(#module-1, #module-3) .card-text { font-size: 14.5px; max-width: 78ch; }
+    :is(#module-1, #module-3) .card-text + .card-text { margin-top: 8px; }
+    :is(#module-1, #module-3) .chip {
       display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
       border: 1px solid var(--slate-200); background: var(--bg); color: var(--text);
       border-radius: 999px; padding: 4px 11px; font-size: 13px; font-weight: 600;
       font-variant-numeric: tabular-nums;
     }
-    .chip--accent { background: var(--accent-soft); border-color: #ccfbf1; color: var(--accent-strong); }
-    .chip--pass { background: var(--pass-soft); border-color: #bbf7d0; color: var(--pass); }
-    .chip--fail { background: var(--fail-soft); border-color: #fecaca; color: var(--fail); }
+    :is(#module-1, #module-3) .chip--accent { background: var(--accent-soft); border-color: #ccfbf1; color: var(--accent-strong); }
+    :is(#module-1, #module-3) .chip--pass { background: var(--pass-soft); border-color: #bbf7d0; color: var(--pass); }
+    :is(#module-1, #module-3) .chip--fail { background: var(--fail-soft); border-color: #fecaca; color: var(--fail); }
 
     /* ---------- Buttons ---------- */
-    .btn {
+    :is(#module-1, #module-3) .btn {
       display: inline-flex; align-items: center; justify-content: center; gap: 6px;
       min-height: 40px; padding: 0 16px; border-radius: 10px;
       border: 1px solid var(--slate-300); background: var(--surface); color: var(--heading);
       font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
       transition: background-color 0.15s, border-color 0.15s;
     }
-    .btn:hover:not(:disabled) { background: var(--bg); border-color: #94a3b8; }
-    .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-    .btn-primary:hover:not(:disabled) { background: var(--accent-strong); border-color: var(--accent-strong); }
-    .btn-sm { min-height: 34px; padding: 0 12px; font-size: 13px; }
-    .btn-block { width: 100%; }
+    :is(#module-1, #module-3) .btn:hover:not(:disabled) { background: var(--bg); border-color: #94a3b8; }
+    :is(#module-1, #module-3) .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    :is(#module-1, #module-3) .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    :is(#module-1, #module-3) .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    :is(#module-1, #module-3) .btn-primary:hover:not(:disabled) { background: var(--accent-strong); border-color: var(--accent-strong); }
+    :is(#module-1, #module-3) .btn-sm { min-height: 34px; padding: 0 12px; font-size: 13px; }
+    :is(#module-1, #module-3) .btn-block { width: 100%; }
 
     /* ---------- Intro ---------- */
-    .intro { display: grid; gap: 24px; }
-    @media (min-width: 900px) { .intro { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 32px; } }
-    .intro h2 { font-size: 21px; letter-spacing: -0.015em; }
-    .lead { margin-top: 8px; font-size: 16px; color: #1e293b; max-width: 62ch; }
-    .model-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-top: 16px; }
-    .model-box {
+    :is(#module-1, #module-3) .intro { display: grid; gap: 24px; }
+    @media (min-width: 900px) { :is(#module-1, #module-3) .intro { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 32px; } }
+    :is(#module-1, #module-3) .intro h2 { font-size: 21px; letter-spacing: -0.015em; }
+    :is(#module-1, #module-3) .lead { margin-top: 8px; font-size: 16px; color: #1e293b; max-width: 62ch; }
+    :is(#module-1, #module-3) .model-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-top: 16px; }
+    :is(#module-1, #module-3) .model-box {
       display: flex; flex-direction: column; gap: 6px; padding: 12px 14px;
       background: var(--bg); border: 1px solid var(--slate-200); border-radius: var(--radius);
     }
-    .model-label { font-size: 13px; font-weight: 600; color: var(--muted); }
-    .model-box .math { font-size: 1.22em; }
-    .symbols { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 14px 0 0; font-size: 14px; }
-    .symbols div { display: flex; gap: 6px; align-items: baseline; }
-    .symbols dt { font-family: var(--font-math); font-size: 1.08em; color: var(--heading); }
-    .symbols dd { margin: 0; color: var(--muted); }
-    .assumption-line { margin-top: 10px; font-size: 14px; color: var(--muted); }
+    :is(#module-1, #module-3) .model-label { font-size: 13px; font-weight: 600; color: var(--muted); }
+    :is(#module-1, #module-3) .model-box .math { font-size: 1.22em; }
+    :is(#module-1, #module-3) .symbols { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 14px 0 0; font-size: 14px; }
+    :is(#module-1, #module-3) .symbols div { display: flex; gap: 6px; align-items: baseline; }
+    :is(#module-1, #module-3) .symbols dt { font-family: var(--font-math); font-size: 1.08em; color: var(--heading); }
+    :is(#module-1, #module-3) .symbols dd { margin: 0; color: var(--muted); }
+    :is(#module-1, #module-3) .assumption-line { margin-top: 10px; font-size: 14px; color: var(--muted); }
 
-    .example { border-left: 3px solid var(--accent); padding: 2px 0 2px 18px; }
-    @media (max-width: 899px) { .example { border-left: 0; border-top: 1px solid var(--slate-200); padding: 20px 0 0; } }
-    .example h3 { font-size: 16px; }
-    .example > p { margin-top: 6px; font-size: 14.5px; }
-    .example-eq { display: inline-block; margin-top: 8px; }
-    .example-steps { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 6px; }
-    .example-steps li {
+    :is(#module-1, #module-3) .example { border-left: 3px solid var(--accent); padding: 2px 0 2px 18px; }
+    @media (max-width: 899px) { :is(#module-1, #module-3) .example { border-left: 0; border-top: 1px solid var(--slate-200); padding: 20px 0 0; } }
+    :is(#module-1, #module-3) .example h3 { font-size: 16px; }
+    :is(#module-1, #module-3) .example > p { margin-top: 6px; font-size: 14.5px; }
+    :is(#module-1, #module-3) .example-eq { display: inline-block; margin-top: 8px; }
+    :is(#module-1, #module-3) .example-steps { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 6px; }
+    :is(#module-1, #module-3) .example-steps li {
       display: grid; grid-template-columns: 7.2em 4.6em 1fr; gap: 10px; align-items: baseline;
       padding: 7px 0; border-bottom: 1px solid var(--slate-200); font-size: 14px;
     }
-    .ex-time { color: var(--muted); font-variant-numeric: tabular-nums; }
-    .ex-temp { font-weight: 700; color: var(--heading); font-variant-numeric: tabular-nums; }
-    .ex-note { color: var(--muted); font-size: 13px; }
+    :is(#module-1, #module-3) .ex-time { color: var(--muted); font-variant-numeric: tabular-nums; }
+    :is(#module-1, #module-3) .ex-temp { font-weight: 700; color: var(--heading); font-variant-numeric: tabular-nums; }
+    :is(#module-1, #module-3) .ex-note { color: var(--muted); font-size: 13px; }
     @media (max-width: 480px) {
-      .example-steps li { grid-template-columns: 1fr auto; }
-      .ex-note { grid-column: 1 / -1; }
+      :is(#module-1, #module-3) .example-steps li { grid-template-columns: 1fr auto; }
+      :is(#module-1, #module-3) .ex-note { grid-column: 1 / -1; }
     }
-    .example-why { margin-top: 12px; font-size: 14px; }
+    :is(#module-1, #module-3) .example-why { margin-top: 12px; font-size: 14px; }
 
     /* ---------- Controls ---------- */
-    .controls h2 { font-size: 18px; }
-    .controls-grid { display: grid; gap: 22px; margin-top: 16px; }
-    @media (min-width: 640px) and (max-width: 1023px) { .controls-grid { grid-template-columns: 1fr 1fr; } }
-    .control { display: grid; gap: 8px; border: 0; margin: 0; padding: 0; min-width: 0; }
-    .control-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-    .control label, .control legend { font-size: 14.5px; font-weight: 650; color: var(--heading); padding: 0; }
-    .var { font-family: var(--font-math); font-size: 1.12em; font-weight: 400; }
-    .control-value {
+    :is(#module-1, #module-3) .controls h2 { font-size: 18px; }
+    :is(#module-1, #module-3) .controls-grid { display: grid; gap: 22px; margin-top: 16px; }
+    @media (min-width: 640px) and (max-width: 1023px) { :is(#module-1, #module-3) .controls-grid { grid-template-columns: 1fr 1fr; } }
+    :is(#module-1, #module-3) .control { display: grid; gap: 8px; border: 0; margin: 0; padding: 0; min-width: 0; }
+    :is(#module-1, #module-3) .control-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    :is(#module-1, #module-3) .control label,
+:is(#module-1, #module-3) .control legend { font-size: 14.5px; font-weight: 650; color: var(--heading); padding: 0; }
+    :is(#module-1, #module-3) .var { font-family: var(--font-math); font-size: 1.12em; font-weight: 400; }
+    :is(#module-1, #module-3) .control-value {
       min-width: 68px; text-align: center; padding: 2px 10px; border-radius: var(--radius-sm);
       background: var(--accent-soft); border: 1px solid #ccfbf1; color: var(--accent-strong);
       font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums;
     }
-    .range-scale { display: flex; justify-content: space-between; margin-top: -4px; font-size: 12px; color: var(--muted); }
-    .control-help { font-size: 13px; color: var(--muted); line-height: 1.5; }
-    .assumption {
+    :is(#module-1, #module-3) .range-scale { display: flex; justify-content: space-between; margin-top: -4px; font-size: 12px; color: var(--muted); }
+    :is(#module-1, #module-3) .control-help { font-size: 13px; color: var(--muted); line-height: 1.5; }
+    :is(#module-1, #module-3) .assumption {
       font-size: 13px; line-height: 1.5; padding: 10px 12px;
       background: var(--bg); border: 1px solid var(--slate-200); border-radius: 10px;
     }
 
     /* Range slider: teal fill up to the thumb (--fill is set from JavaScript) */
-    input[type="range"] {
+    :is(#module-1, #module-3) input[type="range"] {
       --fill: 50%;
       -webkit-appearance: none; appearance: none;
       width: 100%; height: 28px; margin: 0; background: transparent; cursor: pointer;
     }
-    input[type="range"]:focus { outline: none; }
-    input[type="range"]::-webkit-slider-runnable-track {
+    :is(#module-1, #module-3) input[type="range"]:focus { outline: none; }
+    :is(#module-1, #module-3) input[type="range"]::-webkit-slider-runnable-track {
       height: 6px; border-radius: 999px;
       background: linear-gradient(to right, var(--accent) var(--fill), var(--slate-200) var(--fill));
     }
-    input[type="range"]::-webkit-slider-thumb {
+    :is(#module-1, #module-3) input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none; appearance: none;
       width: 22px; height: 22px; margin-top: -8px; border-radius: 50%;
       background: #fff; border: 2px solid var(--accent); box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
     }
-    input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 5px var(--accent-ring); }
-    input[type="range"]::-moz-range-track { height: 6px; border-radius: 999px; background: var(--slate-200); }
-    input[type="range"]::-moz-range-progress { height: 6px; border-radius: 999px; background: var(--accent); }
-    input[type="range"]::-moz-range-thumb {
+    :is(#module-1, #module-3) input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 5px var(--accent-ring); }
+    :is(#module-1, #module-3) input[type="range"]::-moz-range-track { height: 6px; border-radius: 999px; background: var(--slate-200); }
+    :is(#module-1, #module-3) input[type="range"]::-moz-range-progress { height: 6px; border-radius: 999px; background: var(--accent); }
+    :is(#module-1, #module-3) input[type="range"]::-moz-range-thumb {
       width: 18px; height: 18px; border-radius: 50%;
       background: #fff; border: 2px solid var(--accent); box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
     }
-    input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px var(--accent-ring); }
+    :is(#module-1, #module-3) input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px var(--accent-ring); }
 
     /* Segmented control built from native radio buttons (keyboard arrows work) */
-    .segmented {
+    :is(#module-1, #module-3) .segmented {
       position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px;
       background: var(--slate-100); border: 1px solid var(--slate-200); border-radius: 12px;
     }
-    .segmented input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-    .segmented label {
+    :is(#module-1, #module-3) .segmented input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+    :is(#module-1, #module-3) .segmented label {
       display: flex; align-items: center; justify-content: center; min-height: 38px; padding: 6px 10px;
       border-radius: 9px; font-size: 14px; font-weight: 600; color: var(--muted);
       cursor: pointer; user-select: none; transition: background-color 0.15s, color 0.15s;
     }
-    .segmented label:hover { color: var(--heading); }
-    .segmented input:checked + label {
+    :is(#module-1, #module-3) .segmented label:hover { color: var(--heading); }
+    :is(#module-1, #module-3) .segmented input:checked + label {
       background: var(--surface); color: var(--accent-strong);
       box-shadow: 0 1px 2px rgba(15, 23, 42, 0.1), 0 0 0 1px var(--slate-200);
     }
-    .segmented input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 1px; }
+    :is(#module-1, #module-3) .segmented input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 1px; }
 
     /* ---------- Charts ---------- */
-    .equation-strip {
+    :is(#module-1, #module-3) .equation-strip {
       display: flex; flex-wrap: wrap; align-items: center; gap: 6px 22px;
       padding: 10px 14px; margin-bottom: 12px; font-size: 15px;
       background: var(--bg); border: 1px solid var(--slate-200); border-radius: var(--radius);
     }
-    @media (max-width: 520px) { .equation-strip .math { white-space: normal; } }
-    .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; list-style: none; padding: 0; margin: 0 0 10px; font-size: 13px; }
-    .legend li { display: inline-flex; align-items: center; gap: 7px; }
-    .legend-swatch { flex: none; }
-    .chart-box { position: relative; width: 100%; height: 420px; }
-    .chart-box--log { height: 330px; }
-    @media (max-width: 640px) { .chart-box { height: 310px; } .chart-box--log { height: 280px; } }
-    .chart-fallback {
+    @media (max-width: 520px) { :is(#module-1, #module-3) .equation-strip .math { white-space: normal; } }
+    :is(#module-1, #module-3) .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; list-style: none; padding: 0; margin: 0 0 10px; font-size: 13px; }
+    :is(#module-1, #module-3) .legend li { display: inline-flex; align-items: center; gap: 7px; }
+    :is(#module-1, #module-3) .legend-swatch { flex: none; }
+    :is(#module-1, #module-3) .chart-box { position: relative; width: 100%; height: 420px; }
+    :is(#module-1, #module-3) .chart-box--log { height: 330px; }
+    @media (max-width: 640px) { :is(#module-1, #module-3) .chart-box { height: 310px; } :is(#module-1, #module-3) .chart-box--log { height: 280px; } }
+    :is(#module-1, #module-3) .chart-fallback {
       position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center;
       font-size: 14px; color: var(--muted); background: var(--bg);
       border: 1px dashed var(--slate-300); border-radius: var(--radius);
     }
-    .chart-toolbar {
+    :is(#module-1, #module-3) .chart-toolbar {
       display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
       gap: 10px 16px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--slate-200);
     }
-    .ref-status { font-size: 13.5px; color: var(--muted); }
-    .ref-status strong { font-variant-numeric: tabular-nums; }
-    .chart-tools { display: flex; flex-wrap: wrap; gap: 8px; }
-    .chart-hint { margin-top: 10px; font-size: 13.5px; color: var(--muted); max-width: 85ch; }
+    :is(#module-1, #module-3) .ref-status { font-size: 13.5px; color: var(--muted); }
+    :is(#module-1, #module-3) .ref-status strong { font-variant-numeric: tabular-nums; }
+    :is(#module-1, #module-3) .chart-tools { display: flex; flex-wrap: wrap; gap: 8px; }
+    :is(#module-1, #module-3) .chart-hint { margin-top: 10px; font-size: 13.5px; color: var(--muted); max-width: 85ch; }
 
     /* ---------- Metrics ---------- */
-    .section-head { margin-bottom: 12px; }
-    .section-head h2 { font-size: 19px; letter-spacing: -0.01em; }
-    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 12px; }
-    .metric {
+    :is(#module-1, #module-3) .section-head { margin-bottom: 12px; }
+    :is(#module-1, #module-3) .section-head h2 { font-size: 19px; letter-spacing: -0.01em; }
+    :is(#module-1, #module-3) .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 12px; }
+    :is(#module-1, #module-3) .metric {
       background: var(--surface); border: 1px solid var(--slate-200); border-radius: var(--radius);
       padding: 14px 16px 15px; border-top: 3px solid var(--slate-300);
     }
-    .metric--tau { border-top-color: var(--blue); }
-    .metric--accent { border-top-color: var(--accent); }
-    .metric--error { border-top-color: #d97706; }
-    .metric h3 { font-size: 13px; font-weight: 600; color: var(--muted); }
-    .metric-value { margin: 4px 0 4px; font-size: 24px; font-weight: 700; color: var(--heading); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
-    .metric-unit { font-size: 14px; font-weight: 600; color: var(--muted); margin-left: 3px; }
-    .metric-note { font-size: 13px; line-height: 1.45; color: var(--muted); }
-    .callout {
+    :is(#module-1, #module-3) .metric--tau { border-top-color: var(--blue); }
+    :is(#module-1, #module-3) .metric--accent { border-top-color: var(--accent); }
+    :is(#module-1, #module-3) .metric--error { border-top-color: #d97706; }
+    :is(#module-1, #module-3) .metric h3 { font-size: 13px; font-weight: 600; color: var(--muted); }
+    :is(#module-1, #module-3) .metric-value { margin: 4px 0 4px; font-size: 24px; font-weight: 700; color: var(--heading); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+    :is(#module-1, #module-3) .metric-unit { font-size: 14px; font-weight: 600; color: var(--muted); margin-left: 3px; }
+    :is(#module-1, #module-3) .metric-note { font-size: 13px; line-height: 1.45; color: var(--muted); }
+    :is(#module-1, #module-3) .callout {
       margin-top: 12px; padding: 16px 18px; border-radius: var(--radius);
       background: var(--accent-soft); border: 1px solid #ccfbf1;
     }
-    .callout h3 { font-size: 15px; margin-bottom: 4px; }
-    .callout p { font-size: 14.5px; max-width: 80ch; }
-    .callout p + p { margin-top: 8px; }
-    .callout--ramp { background: var(--amber-soft); border-color: #fde68a; }
-    .unit-pair { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-    .unit-tag { font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--slate-200); }
-    .unit-tag--error { color: var(--amber); border-color: #fcd34d; }
-    .unit-tag--lag { color: var(--blue); border-color: #bfdbfe; }
+    :is(#module-1, #module-3) .callout h3 { font-size: 15px; margin-bottom: 4px; }
+    :is(#module-1, #module-3) .callout p { font-size: 14.5px; max-width: 80ch; }
+    :is(#module-1, #module-3) .callout p + p { margin-top: 8px; }
+    :is(#module-1, #module-3) .callout--ramp { background: var(--amber-soft); border-color: #fde68a; }
+    :is(#module-1, #module-3) .unit-pair { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    :is(#module-1, #module-3) .unit-tag { font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--slate-200); }
+    :is(#module-1, #module-3) .unit-tag--error { color: var(--amber); border-color: #fcd34d; }
+    :is(#module-1, #module-3) .unit-tag--lag { color: var(--blue); border-color: #bfdbfe; }
 
     /* ---------- Log chart readout ---------- */
-    .note {
+    :is(#module-1, #module-3) .note {
       margin-bottom: 12px; padding: 10px 14px; font-size: 14px;
       background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; color: #1e3a8a;
     }
-    .note strong { color: #1e3a8a; }
-    .readout { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 14px 0; }
-    .readout-item { padding: 10px 14px; background: var(--bg); border: 1px solid var(--slate-200); border-radius: 10px; }
-    .readout-label { display: block; font-size: 13px; color: var(--muted); }
-    .readout-value { display: block; font-size: 18px; font-weight: 700; color: var(--heading); font-variant-numeric: tabular-nums; }
+    :is(#module-1, #module-3) .note strong { color: #1e3a8a; }
+    :is(#module-1, #module-3) .readout { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 14px 0; }
+    :is(#module-1, #module-3) .readout-item { padding: 10px 14px; background: var(--bg); border: 1px solid var(--slate-200); border-radius: 10px; }
+    :is(#module-1, #module-3) .readout-label { display: block; font-size: 13px; color: var(--muted); }
+    :is(#module-1, #module-3) .readout-value { display: block; font-size: 18px; font-weight: 700; color: var(--heading); font-variant-numeric: tabular-nums; }
 
     /* ---------- Predict, then check ---------- */
-    .steps { display: flex; flex-wrap: wrap; gap: 8px 10px; list-style: none; padding: 0; margin: 0 0 16px; counter-reset: step; }
-    .steps li { counter-increment: step; display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--muted); }
-    .steps li::before {
+    :is(#module-1, #module-3) .steps { display: flex; flex-wrap: wrap; gap: 8px 10px; list-style: none; padding: 0; margin: 0 0 16px; counter-reset: step; }
+    :is(#module-1, #module-3) .steps li { counter-increment: step; display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--muted); }
+    :is(#module-1, #module-3) .steps li::before {
       content: counter(step); display: grid; place-items: center; width: 22px; height: 22px; flex: none;
       border-radius: 50%; border: 1.5px solid var(--slate-300); font-size: 12px; font-weight: 700;
     }
-    .steps li:not(:last-child)::after { content: ""; width: 20px; height: 1px; background: var(--slate-300); }
-    .steps li.is-active { color: var(--heading); font-weight: 650; }
-    .steps li.is-active::before { border-color: var(--accent); color: var(--accent); }
-    .steps li.is-done::before { content: "\2713"; background: var(--accent); border-color: var(--accent); color: #fff; }
-    .predict-question { border: 0; padding: 0; margin: 0; min-width: 0; }
-    .predict-question legend { font-size: 16px; font-weight: 650; color: var(--heading); padding: 0; margin-bottom: 12px; max-width: 70ch; }
-    .choices { display: grid; gap: 8px; }
-    .choice { position: relative; }
-    .choice input { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
-    .choice label {
+    :is(#module-1, #module-3) .steps li:not(:last-child)::after { content: ""; width: 20px; height: 1px; background: var(--slate-300); }
+    :is(#module-1, #module-3) .steps li.is-active { color: var(--heading); font-weight: 650; }
+    :is(#module-1, #module-3) .steps li.is-active::before { border-color: var(--accent); color: var(--accent); }
+    :is(#module-1, #module-3) .steps li.is-done::before { content: "\2713"; background: var(--accent); border-color: var(--accent); color: #fff; }
+    :is(#module-1, #module-3) .predict-question { border: 0; padding: 0; margin: 0; min-width: 0; }
+    :is(#module-1, #module-3) .predict-question legend { font-size: 16px; font-weight: 650; color: var(--heading); padding: 0; margin-bottom: 12px; max-width: 70ch; }
+    :is(#module-1, #module-3) .choices { display: grid; gap: 8px; }
+    :is(#module-1, #module-3) .choice { position: relative; }
+    :is(#module-1, #module-3) .choice input { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+    :is(#module-1, #module-3) .choice label {
       display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 10px 14px;
       border: 1px solid var(--slate-200); border-radius: var(--radius); background: var(--surface);
       cursor: pointer; font-size: 14.5px; transition: border-color 0.15s, background-color 0.15s;
     }
-    .choice label::before {
+    :is(#module-1, #module-3) .choice label::before {
       content: ""; width: 18px; height: 18px; flex: none; border-radius: 50%;
       border: 2px solid var(--slate-300); background: var(--surface);
     }
-    .choice label:hover { border-color: var(--slate-300); }
-    .choice input:checked + label { border-color: var(--accent); background: var(--accent-soft); }
-    .choice input:checked + label::before { border-color: var(--accent); box-shadow: inset 0 0 0 4px var(--surface); background: var(--accent); }
-    .choice input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
-    .choice input:disabled + label { cursor: default; }
+    :is(#module-1, #module-3) .choice label:hover { border-color: var(--slate-300); }
+    :is(#module-1, #module-3) .choice input:checked + label { border-color: var(--accent); background: var(--accent-soft); }
+    :is(#module-1, #module-3) .choice input:checked + label::before { border-color: var(--accent); box-shadow: inset 0 0 0 4px var(--surface); background: var(--accent); }
+    :is(#module-1, #module-3) .choice input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
+    :is(#module-1, #module-3) .choice input:disabled + label { cursor: default; }
     /* Result colours must beat the :checked rule above, so they use the same selector shape */
-    .choice.is-correct input + label { border-color: var(--pass); background: var(--pass-soft); }
-    .choice.is-wrong input + label { border-color: var(--fail); background: var(--fail-soft); }
-    .choice.is-correct input:checked + label::before { border-color: var(--pass); background: var(--pass); }
-    .choice.is-wrong input:checked + label::before { border-color: var(--fail); background: var(--fail); }
-    .choice-tag { margin-left: auto; font-size: 12px; font-weight: 700; white-space: nowrap; }
-    .choice.is-correct .choice-tag { color: var(--pass); }
-    .choice.is-wrong .choice-tag { color: var(--fail); }
-    .predict-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 16px; }
-    .predict-hint { font-size: 13px; color: var(--muted); }
-    .feedback { margin-top: 16px; padding: 16px 18px; border-radius: var(--radius); border: 1px solid; outline: none; }
-    .feedback.is-correct { background: var(--pass-soft); border-color: #bbf7d0; }
-    .feedback.is-wrong { background: var(--fail-soft); border-color: #fecaca; }
-    .feedback-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
-    .feedback.is-correct .feedback-title { color: var(--pass); }
-    .feedback.is-wrong .feedback-title { color: var(--fail); }
-    .feedback p { font-size: 14.5px; max-width: 80ch; }
-    .feedback p + p { margin-top: 8px; }
-    .feedback-observed { color: var(--accent-strong); font-weight: 600; }
+    :is(#module-1, #module-3) .choice.is-correct input + label { border-color: var(--pass); background: var(--pass-soft); }
+    :is(#module-1, #module-3) .choice.is-wrong input + label { border-color: var(--fail); background: var(--fail-soft); }
+    :is(#module-1, #module-3) .choice.is-correct input:checked + label::before { border-color: var(--pass); background: var(--pass); }
+    :is(#module-1, #module-3) .choice.is-wrong input:checked + label::before { border-color: var(--fail); background: var(--fail); }
+    :is(#module-1, #module-3) .choice-tag { margin-left: auto; font-size: 12px; font-weight: 700; white-space: nowrap; }
+    :is(#module-1, #module-3) .choice.is-correct .choice-tag { color: var(--pass); }
+    :is(#module-1, #module-3) .choice.is-wrong .choice-tag { color: var(--fail); }
+    :is(#module-1, #module-3) .predict-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 16px; }
+    :is(#module-1, #module-3) .predict-hint { font-size: 13px; color: var(--muted); }
+    :is(#module-1, #module-3) .feedback { margin-top: 16px; padding: 16px 18px; border-radius: var(--radius); border: 1px solid; outline: none; }
+    :is(#module-1, #module-3) .feedback.is-correct { background: var(--pass-soft); border-color: #bbf7d0; }
+    :is(#module-1, #module-3) .feedback.is-wrong { background: var(--fail-soft); border-color: #fecaca; }
+    :is(#module-1, #module-3) .feedback-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+    :is(#module-1, #module-3) .feedback.is-correct .feedback-title { color: var(--pass); }
+    :is(#module-1, #module-3) .feedback.is-wrong .feedback-title { color: var(--fail); }
+    :is(#module-1, #module-3) .feedback p { font-size: 14.5px; max-width: 80ch; }
+    :is(#module-1, #module-3) .feedback p + p { margin-top: 8px; }
+    :is(#module-1, #module-3) .feedback-observed { color: var(--accent-strong); font-weight: 600; }
 
     /* ---------- Validation table ---------- */
-    .table-wrap { border: 1px solid var(--slate-200); border-radius: var(--radius); overflow: hidden; margin-top: 14px; }
-    .validation-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    .validation-table th {
+    :is(#module-1, #module-3) .table-wrap { border: 1px solid var(--slate-200); border-radius: var(--radius); overflow: hidden; margin-top: 14px; }
+    :is(#module-1, #module-3) .validation-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    :is(#module-1, #module-3) .validation-table th {
       text-align: left; font-size: 13px; font-weight: 600; color: var(--muted);
       background: var(--bg); padding: 10px 14px; border-bottom: 1px solid var(--slate-200);
     }
-    .validation-table td { padding: 12px 14px; border-bottom: 1px solid var(--slate-200); vertical-align: top; }
-    .validation-table tr:last-child td { border-bottom: 0; }
-    .cell-main { display: block; font-weight: 650; color: var(--heading); font-variant-numeric: tabular-nums; }
-    .cell-sub { display: block; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
-    .status {
+    :is(#module-1, #module-3) .validation-table td { padding: 12px 14px; border-bottom: 1px solid var(--slate-200); vertical-align: top; }
+    :is(#module-1, #module-3) .validation-table tr:last-child td { border-bottom: 0; }
+    :is(#module-1, #module-3) .cell-main { display: block; font-weight: 650; color: var(--heading); font-variant-numeric: tabular-nums; }
+    :is(#module-1, #module-3) .cell-sub { display: block; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    :is(#module-1, #module-3) .status {
       display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
       font-size: 12.5px; font-weight: 700; letter-spacing: 0.03em;
     }
-    .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-    .status--pass { background: var(--pass-soft); color: var(--pass); }
-    .status--fail { background: var(--fail-soft); color: var(--fail); }
-    .table-note { margin-top: 10px; font-size: 13px; color: var(--muted); max-width: 90ch; }
+    :is(#module-1, #module-3) .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    :is(#module-1, #module-3) .status--pass { background: var(--pass-soft); color: var(--pass); }
+    :is(#module-1, #module-3) .status--fail { background: var(--fail-soft); color: var(--fail); }
+    :is(#module-1, #module-3) .table-note { margin-top: 10px; font-size: 13px; color: var(--muted); max-width: 90ch; }
     /* Phones: each validation row becomes a small stacked block */
     @media (max-width: 600px) {
-      .validation-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-      .validation-table, .validation-table tbody, .validation-table tr, .validation-table td { display: block; width: 100%; }
-      .validation-table tr { padding: 6px 0; border-bottom: 1px solid var(--slate-200); }
-      .validation-table tr:last-child { border-bottom: 0; }
-      .validation-table td { display: grid; grid-template-columns: 6.5em 1fr; gap: 10px; padding: 6px 14px; border: 0; }
-      .validation-table td::before { content: attr(data-label); font-size: 12.5px; font-weight: 600; color: var(--muted); }
+      :is(#module-1, #module-3) .validation-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+      :is(#module-1, #module-3) .validation-table,
+:is(#module-1, #module-3) .validation-table tbody,
+:is(#module-1, #module-3) .validation-table tr,
+:is(#module-1, #module-3) .validation-table td { display: block; width: 100%; }
+      :is(#module-1, #module-3) .validation-table tr { padding: 6px 0; border-bottom: 1px solid var(--slate-200); }
+      :is(#module-1, #module-3) .validation-table tr:last-child { border-bottom: 0; }
+      :is(#module-1, #module-3) .validation-table td { display: grid; grid-template-columns: 6.5em 1fr; gap: 10px; padding: 6px 14px; border: 0; }
+      :is(#module-1, #module-3) .validation-table td::before { content: attr(data-label); font-size: 12.5px; font-weight: 600; color: var(--muted); }
     }
 
     /* ---------- Understanding the parameters ---------- */
-    .concepts { display: grid; gap: 0 32px; margin-top: 4px; }
-    @media (min-width: 760px) { .concepts { grid-template-columns: 1fr 1fr; } }
-    .concept { padding: 16px 0; border-top: 1px solid var(--slate-200); }
-    .concept h3 { font-size: 15.5px; margin-bottom: 4px; }
-    .concept p { font-size: 14.5px; max-width: 64ch; }
+    :is(#module-1, #module-3) .concepts { display: grid; gap: 0 32px; margin-top: 4px; }
+    @media (min-width: 760px) { :is(#module-1, #module-3) .concepts { grid-template-columns: 1fr 1fr; } }
+    :is(#module-1, #module-3) .concept { padding: 16px 0; border-top: 1px solid var(--slate-200); }
+    :is(#module-1, #module-3) .concept h3 { font-size: 15.5px; margin-bottom: 4px; }
+    :is(#module-1, #module-3) .concept p { font-size: 14.5px; max-width: 64ch; }
 
     /* ---------- Footer ---------- */
-    .site-footer { margin-top: 32px; border-top: 1px solid var(--slate-200); background: var(--surface); }
-    .footer-inner { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 24px; padding: 20px 0 26px; font-size: 13.5px; color: var(--muted); }
-    .noscript { margin: 16px 0 0; padding: 12px 16px; border-radius: 10px; background: var(--fail-soft); color: var(--fail); }
+    
+    
+    
+  
+    /* =====================================================================
+       MODULE 3: additional styles
+       ===================================================================== */
+#module-3 .control-set { display: grid; gap: 22px; }
+#module-3 .preset-list { display: grid; gap: 8px; }
+#module-3 .preset-list .btn { justify-content: flex-start; }
+#module-3 .metrics { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+#module-3 .pair { display: grid; gap: 20px; }
+@media (min-width: 980px) { #module-3 .pair { grid-template-columns: 1fr 1fr; } }
+#module-3 .chart-box--square { height: auto; aspect-ratio: 1 / 1; max-width: 460px; margin: 0 auto; }
+#module-3 .ss-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; margin-top: 4px; }
+@media (min-width: 920px) { #module-3 .ss-grid { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 28px; } }
+#module-3 .ss-line { padding: 12px 14px; background: var(--bg); border: 1px solid var(--slate-200); border-radius: var(--radius); overflow-x: auto; white-space: nowrap; font-size: 15px; }
+#module-3 .ss-line + .ss-line { margin-top: 8px; }
+#module-3 .ss-label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 4px; white-space: normal; }
+#module-3 .mat { display: inline-flex; align-items: center; vertical-align: middle; margin: 0 0.25em; }
+#module-3 .mat::before,
+#module-3 .mat::after { content: ""; align-self: stretch; width: 5px; border: 1.5px solid currentColor; }
+#module-3 .mat::before { border-right: 0; }
+#module-3 .mat::after { border-left: 0; }
+#module-3 .mat-grid { display: grid; gap: 0.1em 0.95em; padding: 0.2em 0.4em; text-align: right; font-variant-numeric: tabular-nums; }
+#module-3 .pz { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+#module-3 .pz-box { padding: 10px 14px; background: var(--bg); border: 1px solid var(--slate-200); border-radius: 10px; min-width: 0; }
+#module-3 .pz-box h3 { font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+#module-3 .pz-box ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+#module-3 .pz-box li { font-family: var(--font-mono); font-size: 13.5px; color: var(--heading); font-variant-numeric: tabular-nums; }
+@media (max-width: 420px) { #module-3 .pz { grid-template-columns: 1fr; } }
+#module-3 .pz-verdict { margin-top: 10px; }
+    /* =====================================================================
+       MODULE 2: styles
+       ===================================================================== */
+
+    /* Same colors as Module 1. */
+    #module-2 {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text: #334155;
+      --muted: #64748b;
+      --heading: #0f172a;
+      --accent: #0f766e;
+      --accent-strong: #115e59;
+      --accent-soft: #f0fdfa;
+    }
+    #module-2 *,
+#module-2 *::before,
+#module-2 *::after { box-sizing: border-box; }
+    #module-2 { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+    #module-2 h1,
+#module-2 h2,
+#module-2 h3 { color: var(--heading); line-height: 1.25; }
+    
+    #module-2 h2 { font-size: 19px; margin: 0 0 14px; }
+    #module-2 p { margin: 8px 0 14px; }
+    #module-2 .container { max-width: 1200px; margin: 0 auto; padding: 0 28px; }
+    
+    
+    
+    
+    #module-2 .module,
+#module-2 .workspace-main { display: grid; gap: 20px; min-width: 0; }
+    #module-2 .module { padding-top: 24px; padding-bottom: 32px; }
+    #module-2 .workspace { display: grid; gap: 20px; align-items: start; }
+    #module-2 .card { min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 1px 2px rgba(15,23,42,.05), 0 6px 16px -8px rgba(15,23,42,.08); }
+    #module-2 .intro { border-left: 3px solid var(--accent); }
+    #module-2 .control { margin-bottom: 20px; }
+    #module-2 label { display: block; font-size: 14px; font-weight: 600; color: var(--heading); margin-top: 8px; }
+    #module-2 input,
+#module-2 select,
+#module-2 button { font: inherit; max-width: 100%; min-height: 40px; }
+    #module-2 input[type="number"],
+#module-2 select { width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: var(--heading); }
+    /* Teal sliders like Module 3. */
+    #module-2 .control-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    #module-2 .control-row label { margin: 0; }
+    #module-2 .control-row output { flex-shrink: 0; }
+    #module-2 .range-scale { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+    #module-2 input[type="range"] { --fill: 0%; appearance: none; -webkit-appearance: none; width: 100%; height: 40px; margin: 4px 0; background: transparent; cursor: pointer; }
+    #module-2 input[type="range"]::-webkit-slider-runnable-track { height: 6px; border-radius: 999px; background: linear-gradient(to right, var(--accent) var(--fill), var(--border) var(--fill)); }
+    #module-2 input[type="range"]::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 22px; height: 22px; margin-top: -8px; border: 2px solid var(--accent); border-radius: 50%; background: white; box-shadow: 0 1px 3px #0003; }
+    #module-2 input[type="range"]::-moz-range-track { height: 6px; border-radius: 999px; background: var(--border); }
+    #module-2 input[type="range"]::-moz-range-progress { height: 6px; border-radius: 999px; background: var(--accent); }
+    #module-2 input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; border: 2px solid var(--accent); border-radius: 50%; background: white; box-shadow: 0 1px 3px #0003; }
+    #module-2 .controls { display: grid; gap: 12px 24px; }
+    #module-2 .controls > h2,
+#module-2 .controls > p { grid-column: 1 / -1; margin: 0; }
+    #module-2 .controls .control { min-width: 0; margin: 0; }
+    #module-2 .controls .control-row { flex-wrap: wrap; }
+    #module-2 .controls .help { margin: 4px 0; }
+    #module-2 #m2-input-status:empty { display: none; }
+    #module-2 output { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--heading); }
+    #module-2 .control output { display: inline-block; padding: 2px 10px; background: var(--accent-soft); color: var(--accent-strong); border: 1px solid #ccfbf1; border-radius: 8px; font-size: 14px; }
+    #module-2 button { margin: 12px 6px 0 0; padding: 8px 16px; border: 1px solid var(--accent); border-radius: 10px; background: var(--accent); color: white; font-size: 14px; font-weight: 600; cursor: pointer; }
+    #module-2 button:hover:not(:disabled) { background: var(--accent-strong); }
+    #module-2 button:disabled { opacity: .5; cursor: not-allowed; }
+    #module-2 :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    #module-2 .help { color: var(--muted); font-size: 13px; }
+    #module-2 .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    #module-2 .metric { border: 1px solid var(--border); border-top: 3px solid var(--accent); border-radius: 12px; padding: 14px 16px; font-size: 13px; color: var(--muted); margin: 0; }
+    #module-2 .metric output { display: block; font-size: 24px; margin-top: 4px; }
+    #module-2 .equation-strip { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; font-family: Cambria, Georgia, serif; }
+    #module-2 .sine-plot { position: relative; width: 100%; height: 350px; }
+    #module-2 .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+    #module-2 table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    #module-2 caption { text-align: left; padding: 12px 14px; font-weight: 600; }
+    #module-2 th { background: var(--bg); font-size: 13px; color: var(--muted); }
+    #module-2 th,
+#module-2 td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+    
+    /* Both controls sit below the graph. */
+    @media (min-width: 600px) {
+      #module-2 .controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (min-width: 600px) and (max-width: 900px) {
+      #module-2 .workspace { gap: 12px; }
+      #module-2 .workspace > .card,
+#module-2 .workspace-main > .card { padding: 14px; }
+    }
+    /* Phone layout. */
+    @media (max-width: 640px) {
+      #module-2 .container { padding-left: 16px; padding-right: 16px; }
+      #module-2 .card { padding: 18px; }
+      #module-2 .sine-plot { height: 300px; }
+    }
+
+    #module-2 {
+      --slate-200: #e2e8f0; --slate-300: #cbd5e1;
+      --radius: 12px; --pass: #15803d; --pass-soft: #f0fdf4;
+      --fail: #b91c1c; --fail-soft: #fef2f2;
+    }
+    #module-2 [hidden] { display: none !important; }
+    #module-2 .card-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    #module-2 .card-sub { color: var(--muted); font-size: 14px; }
+    #module-2 .chip { align-self: flex-start; padding: 4px 11px; border: 1px solid var(--border); border-radius: 999px; font-size: 13px; white-space: nowrap; }
+    #module-2 .choice input { min-height: 0; }
+    #module-2 .choice label { margin: 0; }
+    #module-2 .choice-tag { white-space: normal; }
+    /* Prediction styles. */
+    #module-2 .steps { display: flex; flex-wrap: wrap; gap: 8px 10px; list-style: none; padding: 0; margin: 0 0 16px; counter-reset: step; }
+    #module-2 .steps li { counter-increment: step; display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--muted); }
+    #module-2 .steps li::before {
+      content: counter(step); display: grid; place-items: center; width: 22px; height: 22px; flex: none;
+      border-radius: 50%; border: 1.5px solid var(--slate-300); font-size: 12px; font-weight: 700;
+    }
+    #module-2 .steps li:not(:last-child)::after { content: ""; width: 20px; height: 1px; background: var(--slate-300); }
+    #module-2 .steps li.is-active { color: var(--heading); font-weight: 650; }
+    #module-2 .steps li.is-active::before { border-color: var(--accent); color: var(--accent); }
+    #module-2 .steps li.is-done::before { content: "\2713"; background: var(--accent); border-color: var(--accent); color: #fff; }
+    #module-2 .predict-question { border: 0; padding: 0; margin: 0; min-width: 0; }
+    #module-2 .predict-question legend { font-size: 16px; font-weight: 650; color: var(--heading); padding: 0; margin-bottom: 12px; max-width: 70ch; }
+    #module-2 .choices { display: grid; gap: 8px; }
+    #module-2 .choice { position: relative; }
+    #module-2 .choice input { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+    #module-2 .choice label {
+      display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 10px 14px;
+      border: 1px solid var(--slate-200); border-radius: var(--radius); background: var(--surface);
+      cursor: pointer; font-size: 14.5px; transition: border-color 0.15s, background-color 0.15s;
+    }
+    #module-2 .choice label::before {
+      content: ""; width: 18px; height: 18px; flex: none; border-radius: 50%;
+      border: 2px solid var(--slate-300); background: var(--surface);
+    }
+    #module-2 .choice label:hover { border-color: var(--slate-300); }
+    #module-2 .choice input:checked + label { border-color: var(--accent); background: var(--accent-soft); }
+    #module-2 .choice input:checked + label::before { border-color: var(--accent); box-shadow: inset 0 0 0 4px var(--surface); background: var(--accent); }
+    #module-2 .choice input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
+    #module-2 .choice input:disabled + label { cursor: default; }
+    /* Show correct and wrong answers. */
+    #module-2 .choice.is-correct input + label { border-color: var(--pass); background: var(--pass-soft); }
+    #module-2 .choice.is-wrong input + label { border-color: var(--fail); background: var(--fail-soft); }
+    #module-2 .choice.is-correct input:checked + label::before { border-color: var(--pass); background: var(--pass); }
+    #module-2 .choice.is-wrong input:checked + label::before { border-color: var(--fail); background: var(--fail); }
+    #module-2 .choice-tag { margin-left: auto; font-size: 12px; font-weight: 700; white-space: nowrap; }
+    #module-2 .choice.is-correct .choice-tag { color: var(--pass); }
+    #module-2 .choice.is-wrong .choice-tag { color: var(--fail); }
+    #module-2 .predict-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 16px; }
+    #module-2 .predict-hint { font-size: 13px; color: var(--muted); }
+    #module-2 .feedback { margin-top: 16px; padding: 16px 18px; border-radius: var(--radius); border: 1px solid; outline: none; }
+    #module-2 .feedback.is-correct { background: var(--pass-soft); border-color: #bbf7d0; }
+    #module-2 .feedback.is-wrong { background: var(--fail-soft); border-color: #fecaca; }
+    #module-2 .feedback-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+    #module-2 .feedback.is-correct .feedback-title { color: var(--pass); }
+    #module-2 .feedback.is-wrong .feedback-title { color: var(--fail); }
+    #module-2 .feedback p { font-size: 14.5px; max-width: 80ch; }
+    #module-2 .feedback p + p { margin-top: 8px; }
+    #module-2 .feedback-observed { color: var(--accent-strong); font-weight: 600; }
+
+
+    /* Explanation section. */
+    #module-2 .concepts { display: grid; gap: 0 32px; margin-top: 4px; }
+    @media (min-width: 760px) { #module-2 .concepts { grid-template-columns: 1fr 1fr; } }
+    #module-2 .concept { padding: 16px 0; border-top: 1px solid var(--slate-200); }
+    #module-2 .concept h3 { font-size: 15.5px; margin-bottom: 4px; }
+    #module-2 .concept p { font-size: 14.5px; max-width: 64ch; }
+
+
+  
+    /* =====================================================================
+       MODULE 4: styles
+       ===================================================================== */
+
+    #module-4 {
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #334155;
+      font-size: 15px;
+      line-height: 1.6;
+      font-synthesis: none;
+    }
+    #module-4 * { box-sizing: border-box; }
+    #module-4 [hidden] { display: none !important; }
+    #module-4 { margin: 0; }
+    #module-4 .container { max-width: 1200px; margin: 0 auto; padding: 24px 16px 8px; }
+    @media (min-width: 768px) { #module-4 .container { padding: 24px 28px 8px; } }
+    
+    
+    #module-4 h2 { font-size: 19px; margin: 0 0 10px; color: #0f172a; letter-spacing: -0.01em; line-height: 1.25; }
+    
+    
+    #module-4 .card { background: white; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 1px 2px rgba(15,23,42,.05), 0 6px 16px -8px rgba(15,23,42,.08); padding: 24px; margin-bottom: 20px; }
+    #module-4 .topline,
+#module-4 .actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+    #module-4 .topline p { margin: 5px 0 0; }
+    #module-4 .muted { color: #64748b; }
+    #module-4 .small { font-size: .84rem; }
+    #module-4 .chart { width: 100%; min-width: 0; height: 370px; }
+    #module-4 .fields { display: flex; flex-wrap: wrap; gap: 12px; margin: 18px 0; }
+    #module-4 .field { display: flex; flex-direction: column; gap: 7px; min-width: 170px; flex: 1; }
+    #module-4 .field label { font-weight: 650; font-size: .88rem; }
+    #module-4 .field input { width: 100%; border: 1px solid #cbd5e1; border-radius: 9px; font-size: 1rem; padding: 11px; color: #0f172a; background: #fff; }
+    #module-4 .field input:focus { outline: 2px solid #0f766e; outline-offset: 1px; }
+    #module-4 button { border: 1px solid #0f766e; border-radius: 10px; padding: 10px 17px; background: #0f766e; color: white; font-weight: 750; cursor: pointer; font-size: .93rem; }
+    #module-4 button:hover:not(:disabled) { background: #115e59; border-color: #115e59; }
+    #module-4 button.secondary { background: #fff; color: #0f172a; border-color: #cbd5e1; }
+    #module-4 button.secondary:hover:not(:disabled) { background: #f8fafc; border-color: #94a3b8; }
+    #module-4 button:disabled { opacity: .5; cursor: not-allowed; }
+    #module-4 button:focus-visible { outline: 2px solid #0f766e; outline-offset: 2px; }
+    #module-4 .hint { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; padding: 12px; border-radius: 10px; margin-top: 15px; }
+    #module-4 .result { padding: 16px; border-radius: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; margin-top: 15px; line-height: 1.7; overflow-x: auto; }
+    #module-4 .result h3 { margin: 0 0 8px; }
+    #module-4 .result table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    #module-4 .result td,
+#module-4 .result th { text-align: left; border-bottom: 1px solid #bbf7d0; padding: 7px 5px; }
+    #module-4 .scorebar { display: flex; justify-content: space-around; text-align: center; flex-wrap: wrap; gap: 22px; }
+    #module-4 .scorebar > div { display: flex; flex-direction: column; gap: 6px; }
+    #module-4 .scorebar strong { font-size: 1.6rem; color: #0f172a; font-variant-numeric: tabular-nums; }
+    #module-4 .learn p { line-height: 1.7; }
+    #module-4 .learn p + p { margin-top: 10px; }
+    @media (max-width: 600px) {
+      #module-4 .card { padding: 15px; }
+      #module-4 .chart { height: 330px; }
+      #module-4 .scorebar { justify-content: space-between; }
+      #module-4 .scorebar strong { font-size: 1.3rem; }
+    }
+  
+    #module-4 .m4-lead { margin: 0 0 20px; max-width: 75ch; color: #475569; }
+
+
+    /* =====================================================================
+       INTEGRATION ADJUSTMENTS (scoped, after the module styles)
+       ===================================================================== */
+    /* Modules 1 and 3: the sticky control panel stays below the sticky tab bar */
+    @media (min-width: 1024px) {
+      :is(#module-1, #module-3) .controls {
+        top: calc(var(--tk-nav-h) + 16px);
+        max-height: calc(100vh - var(--tk-nav-h) - 32px);
+      }
+    }
+    /* The module heading above each panel replaces the per-module page headers */
+    :is(#module-1, #module-3) .module { padding-top: 18px; }
+    #module-2 .module { padding-top: 18px; }
+    #module-4 .container { padding-top: 18px; }
+    /* Module 2: secondary buttons and PASS/FAIL badges match Modules 1 and 3 */
+    #module-2 .predict-actions .btn,
+    #module-2 [data-role="skip"] { background: #fff; color: var(--heading); border-color: #cbd5e1; }
+    #module-2 .predict-actions .btn:hover:not(:disabled),
+    #module-2 [data-role="skip"]:hover:not(:disabled) { background: var(--bg); border-color: #94a3b8; }
+    #module-2 .status {
+      display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+      font-size: 12.5px; font-weight: 700; letter-spacing: 0.03em;
+    }
+    #module-2 .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    #module-2 .status--pass { background: var(--pass-soft); color: var(--pass); }
+    #module-2 .status--fail { background: var(--fail-soft); color: var(--fail); }
+    /* Module 3: eigenvalue readout under the s-plane plot */
+    #module-3 .pz-inline {
+      margin-top: 12px; padding: 10px 14px; font-size: 13.5px; color: var(--heading);
+      background: var(--bg); border: 1px solid var(--slate-200); border-radius: 10px;
+      font-variant-numeric: tabular-nums;
+    }
   </style>
 </head>
 <body>
-  <a class="skip-link" href="#m1-controls">Skip to the controls</a>
+  <a class="tk-skip" href="#tk-main">Skip to the module</a>
 
-  <!-- ============================== PAGE HEADER ============================== -->
-  <header class="site-header">
-    <div class="container header-inner">
-      <div>
-        <p class="course-line"><span class="course-code">ENCS4380</span><span class="course-sep" aria-hidden="true">|</span>Interfacing Techniques</p>
-        <h1>Dynamic Characteristics Toolkit</h1>
-        <p class="module-line">Module 01 — First-Order Time Response</p>
-        <p class="meta-line">Birzeit University · Dr. Wasel Ghanem</p>
-      </div>
-      <span class="header-badge">Homework 1</span>
+  <header class="tk-header">
+    <div class="tk-container tk-header-inner">
+      <p class="tk-course"><span class="tk-code">ENCS4380</span> — Interfacing Techniques</p>
+      <h1>Dynamic Characteristics Interactive Toolkit</h1>
+      <p class="tk-meta">Birzeit University · Dr. Wasel Ghanem · Homework 1</p>
     </div>
-    <!-- Teammates: when Modules 2–4 exist, a navigation bar linking them can go here. -->
   </header>
 
-  <main class="container">
-    <noscript><p class="noscript">This toolkit needs JavaScript to draw its interactive charts.</p></noscript>
+  <nav class="tk-nav" aria-label="Toolkit modules">
+    <div class="tk-container">
+      <div class="tk-tabs" role="tablist" aria-label="Modules">
+        <button type="button" class="tk-tab" role="tab" id="tab-module-1" aria-controls="module-1" aria-selected="true" tabindex="0"><span class="tk-tab-num" aria-hidden="true">1</span><span class="tk-tab-long">First-order time response</span><span class="tk-tab-short">Time response</span></button>
+        <button type="button" class="tk-tab" role="tab" id="tab-module-2" aria-controls="module-2" aria-selected="false" tabindex="-1"><span class="tk-tab-num" aria-hidden="true">2</span><span class="tk-tab-long">Frequency response</span><span class="tk-tab-short">Frequency response</span></button>
+        <button type="button" class="tk-tab" role="tab" id="tab-module-3" aria-controls="module-3" aria-selected="false" tabindex="-1"><span class="tk-tab-num" aria-hidden="true">3</span><span class="tk-tab-long">Second order &amp; state space</span><span class="tk-tab-short">Second order</span></button>
+        <button type="button" class="tk-tab" role="tab" id="tab-module-4" aria-controls="module-4" aria-selected="false" tabindex="-1"><span class="tk-tab-num" aria-hidden="true">4</span><span class="tk-tab-long">Guess the sensor</span><span class="tk-tab-short">Guess the sensor</span></button>
+      </div>
+    </div>
+  </nav>
+
+  <main id="tk-main" tabindex="-1">
+    <noscript><div class="tk-container"><p class="tk-noscript">This toolkit needs JavaScript for its sliders, charts and activities.</p></div></noscript>
+
+    <!-- ==================================================================
+         MODULE 1: FIRST-ORDER TIME RESPONSE
+         ================================================================== -->
+    <section class="tk-panel" id="module-1" role="tabpanel" aria-labelledby="tab-module-1">
+      <div class="tk-container tk-panel-head"><h2 class="tk-panel-title">Module 1 — First-Order Time Response</h2></div>
+      <div class="container">
+
 
     <!-- ======================================================================
          MODULE 1: FIRST-ORDER TIME RESPONSE
          Every id in this module starts with "m1-". Modules 2–4 should use
          "m2-", "m3-", "m4-" so nothing collides when the pages are merged.
          ====================================================================== -->
-    <section class="module" id="module-1" aria-labelledby="m1-intro-title">
+    <section class="module" id="m1-root" aria-labelledby="m1-intro-title">
 
       <!-- 1. Module introduction -->
       <article class="card intro">
@@ -737,20 +1151,624 @@
         </div>
       </section>
     </section>
+      </div>
+    </section>
+
+    <!-- ==================================================================
+         MODULE 2: FIRST-ORDER FREQUENCY RESPONSE
+         ================================================================== -->
+    <section class="tk-panel" id="module-2" role="tabpanel" aria-labelledby="tab-module-2" hidden>
+      <div class="tk-container tk-panel-head"><h2 class="tk-panel-title">Module 2 — First-Order Frequency Response</h2></div>
+      <div class="container module" id="m2-root">
+    <section class="card intro">
+      <h2>How does a sensor follow a sine wave?</h2>
+      <p>A first-order sensor reduces the amplitude and delays the phase of a changing input. Explore how time constant and frequency affect its response.</p>
+      <p class="equation-strip">M = 1 / √(1 + (ωτ)²) &nbsp; · &nbsp; φ = −atan(ωτ) &nbsp; · &nbsp; ω = 2πf</p>
+    </section>
+    <div class="workspace">
+    <section class="card response-card">
+    <h2>Input and output sine waves</h2>
+    <p>Unit input amplitude and sensor gain K = 1. This shows the steady-state response, after startup effects have faded.</p>
+    <p>The time axis shows three input cycles and changes with frequency.</p>
+    <!-- Draw both waves here. -->
+    <div class="sine-plot">
+      <canvas id="m2-sine-chart" role="img" aria-label="Input and output amplitude versus time"></canvas>
+    </div>
+    <p id="m2-chart-status" role="status"></p>
+    </section>
+    <aside class="card controls" aria-labelledby="m2-controls-heading">
+    <h2 id="m2-controls-heading">Sensor controls</h2>
+    <div class="control">
+      <!-- Frequency in Hz. -->
+      <div class="control-row">
+      <label for="m2-frequency">Input frequency</label>
+      <output id="m2-frequency-value" for="m2-frequency">1 Hz</output>
+      </div>
+      <input type="range" id="m2-frequency" min="0" max="1000" step="any" value="500">
+      <div class="range-scale"><span>0.01 Hz</span><span>100 Hz</span></div>
+      <p class="help">Logarithmic slider: equal distances multiply frequency by the same factor.</p>
+      <label for="m2-frequency-number">Enter frequency (Hz):</label>
+      <input type="number" id="m2-frequency-number" min="0.01" max="100" step="any" value="1" required>
+    </div>
+    <div class="control">
+    <div class="control-row">
+    <label for="m2-tau">Time constant τ</label>
+    <output id="m2-tau-value" for="m2-tau">0.2 s</output>
+    </div>
+    <input type="range" id="m2-tau" min="0" max="1000" step="any" value="0">
+    <div class="range-scale"><span>0.00001 s</span><span>2 s</span></div>
+    <p class="help">Logarithmic slider for small and large τ values. Larger τ means a slower sensor.</p>
+    <label for="m2-tau-number">Enter τ (seconds):</label>
+    <input type="number" id="m2-tau-number" min="0.00001" max="2" step="any" value="0.2" required>
+    </div>
+    <p class="help">Chosen exploration ranges: τ from 0.00001 to 2 s and frequency from 0.01 to 100 Hz. These are interface limits, not homework requirements. Use the number boxes for precise values.</p>
+    <p id="m2-input-status" role="status"></p>
+    </aside>
+    <div class="workspace-main">
+    <section class="card">
+    <h2>Live response</h2>
+    <div class="metrics">
+    <!-- Live results. -->
+    <p class="metric">Amplitude ratio M: <output id="m2-amplitude"></output></p>
+    <p class="metric">Phase shift φ (negative means lag): <output id="m2-phase"></output></p>
+    </div>
+    </section>
+    <section class="card">
+    <h2>Cutoff frequency and dynamic error</h2>
+    <!-- Cutoff and error. -->
+    <p>Angular cutoff ωc = 1 / τ: <output id="m2-cutoff-angular"></output></p>
+    <p>Cutoff fc = 1 / (2π τ): <output id="m2-cutoff-hz"></output></p>
+    <p>At cutoff, the amplitude ratio is about 0.707 and the phase shift is −45°.</p>
+    <p>Dynamic error δ = M − 1: <output id="m2-dynamic-error"></output></p>
+    <p>A negative error means the output amplitude is smaller than the input. This measures amplitude error, not phase lag.</p>
+    </section>
+    <section class="card">
+    <h2>Bode plots</h2>
+    <p>These graphs show the response across many frequencies. Equal steps along the frequency axis mean equal ratios, such as 0.1, 1, and 10 Hz.</p>
+    <p>Magnitude = 20 log₁₀(M) in decibels (dB). The cutoff marker is at about −3.01 dB and −45°.</p>
+    <div class="sine-plot">
+      <canvas id="m2-bode-magnitude" role="img" aria-label="Bode magnitude in decibels versus frequency in Hz"></canvas>
+    </div>
+    <div class="sine-plot">
+      <canvas id="m2-bode-phase" role="img" aria-label="Bode phase in degrees versus frequency in Hz"></canvas>
+    </div>
+    </section>
+      <section class="card" id="m2-predict" aria-labelledby="m2-predict-title">
+        <div class="card-head"><div><h2 id="m2-predict-title">Predict, then check</h2><p class="card-sub">Choose an answer before moving the sliders, then observe the plotted result.</p></div><span class="chip" data-role="progress">Question 1 of 3</span></div>
+        <ol class="steps" aria-label="Prediction steps"><li data-step="predict">Predict</li><li data-step="observe">Try the controls</li><li data-step="check">See result</li></ol>
+        <fieldset class="predict-question"><legend data-role="prompt"></legend><div class="choices" data-role="choices"></div></fieldset>
+        <div class="predict-actions"><button class="btn" data-role="retry" type="button" hidden>Try again</button><button class="btn" data-role="next" type="button" hidden>Next question</button><p class="predict-hint" data-role="hint">Choose your answer first.</p></div>
+        <button class="btn" data-role="skip" type="button" hidden>Show result now (skip moving)</button>
+        <div class="feedback" data-role="feedback" tabindex="-1" aria-live="polite" hidden></div>
+      </section>
+    <section class="card">
+    <h2>Homework validation checks</h2>
+    <p>Source: homework page 2, section 3.2, checks 2 and 3. These use fixed test inputs, independently of the sliders.</p>
+    <p>Expected values are rounded in the homework. Each tolerance below is an absolute difference in the listed unit.</p>
+    <div class="table-wrap">
+      <table>
+        <caption>First-order frequency response validation</caption>
+        <thead>
+          <tr><th scope="col">Check</th><th scope="col">Expected</th><th scope="col">Calculated</th><th scope="col">Tolerance</th><th scope="col">Result</th></tr>
+        </thead>
+        <tbody id="m2-validation-results"></tbody>
+      </table>
+    </div>
+    <p>For a maximum error magnitude of 5%, M must be at least 0.95. Solving for τ gives τmax = √(1 / 0.95² − 1) / (2π × 100). The 50 Hz check uses this unrounded τmax.</p>
+    </section>
+
+    <section class="card" aria-labelledby="m2-concepts-title">
+      <h2 id="m2-concepts-title">Understanding Module 2</h2>
+      <div class="concepts">
+        <article class="concept"><h3>Why is this a first-order system?</h3><p>The model τ dy/dt + y = Kx contains one time derivative. Here K = 1, so a constant input is eventually reproduced without a gain change.</p></article>
+        <article class="concept"><h3>What does the time constant mean?</h3><p>A larger τ means a slower sensor. At the same nonzero frequency, it gives a smaller amplitude ratio and a larger phase lag. Its cutoff frequency is lower.</p></article>
+        <article class="concept"><h3>How do Hz and rad/s differ?</h3><p>Frequency f counts cycles per second. Angular frequency ω counts radians per second: ω = 2πf. An input sin(2t) has ω = 2 rad/s, or about 0.318 Hz.</p></article>
+        <article class="concept"><h3>What does phase lag mean?</h3><p>The output reaches its peaks later than the input. A negative phase shift indicates lag. For a single sine wave, the time delay is −φ/ω when φ is in radians.</p></article>
+        <article class="concept"><h3>What happens at cutoff?</h3><p>At ω = 1/τ, M = 1/√2 ≈ 0.707 and φ = −45°. The Bode magnitude is about −3.01 dB. The sensor still responds above cutoff, but with more attenuation.</p></article>
+        <article class="concept"><h3>What does dynamic error measure?</h3><p>δ = M − 1 measures the relative amplitude error for this unity-gain model. Multiply by 100 for percent. It does not include phase error. The sine plots show steady state, after the startup transient has faded.</p></article>
+      </div>
+    </section>
+    </div>
+    </div>
+      </div>
+    </section>
+
+    <!-- ==================================================================
+         MODULE 3: SECOND-ORDER RESPONSE AND STATE SPACE
+         ================================================================== -->
+    <section class="tk-panel" id="module-3" role="tabpanel" aria-labelledby="tab-module-3" hidden>
+      <div class="tk-container tk-panel-head"><h2 class="tk-panel-title">Module 3 — Second-Order Response and State Space</h2></div>
+      <div class="container">
+
+
+    <section class="module" id="m3-root" aria-labelledby="m3-intro-title">
+
+      <article class="card intro">
+        <div>
+          <h2 id="m3-intro-title">Why does a sensor ring before it settles?</h2>
+          <p class="lead">Springs, accelerometers and pressure gauges store energy in two ways, so they can overshoot and oscillate instead of creeping up to the answer. Change the damping and the natural frequency, and see how fast, how far and for how long the output swings.</p>
+          <div class="model-grid">
+            <div class="model-box">
+              <span class="model-label">Mass-spring-damper</span>
+              <span class="math"><i>m</i><i>ẍ</i> + <i>b</i><i>ẋ</i> + <i>k</i><i>x</i> = <i>F</i>(<i>t</i>)</span>
+            </div>
+            <div class="model-box">
+              <span class="model-label">Standard form</span>
+              <span class="math"><i>G</i>(<i>s</i>) = <span class="frac"><span><i>K</i><i>ω</i><sub><i>n</i></sub><sup>2</sup></span><span><i>s</i><sup>2</sup> + 2<i>ζω</i><sub><i>n</i></sub><i>s</i> + <i>ω</i><sub><i>n</i></sub><sup>2</sup></span></span></span>
+            </div>
+          </div>
+          <dl class="symbols">
+            <div><dt><i>ζ</i></dt><dd>damping ratio</dd></div>
+            <div><dt><i>ω<sub>n</sub></i></dt><dd>natural frequency (rad/s)</dd></div>
+            <div><dt><i>K</i></dt><dd>static gain</dd></div>
+            <div><dt><i>m, b, k</i></dt><dd>mass, damping, stiffness, with ζ = b / 2√(km) and ω<sub>n</sub> = √(k/m)</dd></div>
+          </dl>
+          <p class="assumption-line">Assumptions: zero initial conditions, and a step input applied at t = 0.</p>
+        </div>
+
+        <aside class="example" aria-labelledby="m3-example-title">
+          <h3 id="m3-example-title">Example: a spring scale loaded suddenly</h3>
+          <p>A pan on a spring with m = 1 kg, b = 2 N·s/m and k = 4 N/m. Then ω<sub>n</sub> = √4 = 2 rad/s and ζ = 2 / (2·√4) = 0.5.</p>
+          <ol class="example-steps">
+            <li><span class="ex-time">ω<sub>d</sub></span><span class="ex-temp">1.732</span><span class="ex-note">ω<sub>n</sub>√(1 − ζ²), the ringing frequency, rad/s</span></li>
+            <li><span class="ex-time">t<sub>p</sub></span><span class="ex-temp">1.81 s</span><span class="ex-note">π / ω<sub>d</sub>, when the needle peaks</span></li>
+            <li><span class="ex-time">M<sub>p</sub></span><span class="ex-temp">16.3%</span><span class="ex-note">e<sup>−πζ/√(1−ζ²)</sup>, how far it overshoots</span></li>
+            <li><span class="ex-time">t<sub>s</sub></span><span class="ex-temp">≈ 4 s</span><span class="ex-note">4 / (ζω<sub>n</sub>), inside ±2% for good</span></li>
+          </ol>
+          <p class="example-why"><strong>So when do you read it?</strong> Not at the first peak: the needle is 16% too high there. Wait about 4 s, or choose a damper that brings ζ closer to 0.7.</p>
+        </aside>
+      </article>
+
+      <div class="workspace">
+        <section class="card controls" id="m3-controls" aria-labelledby="m3-controls-title" tabindex="-1">
+          <h2 id="m3-controls-title">Sensor controls</h2>
+          <div class="controls-grid">
+            <fieldset class="control">
+              <legend>Describe the system with</legend>
+              <div class="segmented">
+                <input type="radio" name="m3-mode" id="m3-mode-zw" value="zw" checked>
+                <label for="m3-mode-zw">ζ and ω<sub>n</sub></label>
+                <input type="radio" name="m3-mode" id="m3-mode-mbk" value="mbk">
+                <label for="m3-mode-mbk">m, b, k</label>
+              </div>
+              <p class="control-help" id="m3-mode-help"></p>
+            </fieldset>
+
+            <div class="control-set" id="m3-set-zw">
+              <div class="control">
+                <div class="control-row">
+                  <label for="m3-zeta">Damping ratio <span class="var">ζ</span></label>
+                  <output class="control-value" id="m3-zeta-value" for="m3-zeta">0.50</output>
+                </div>
+                <input type="range" id="m3-zeta" min="0.05" max="2.5" step="0.05" value="0.5" aria-describedby="m3-zeta-help">
+                <div class="range-scale" aria-hidden="true"><span>0.05</span><span>2.5</span></div>
+                <p class="control-help" id="m3-zeta-help">Below 1 the output rings, at 1 it is critically damped, above 1 it is sluggish.</p>
+              </div>
+              <div class="control">
+                <div class="control-row">
+                  <label for="m3-wn">Natural frequency <span class="var">ω<sub>n</sub></span></label>
+                  <output class="control-value" id="m3-wn-value" for="m3-wn">2.0 rad/s</output>
+                </div>
+                <input type="range" id="m3-wn" min="0.5" max="10" step="0.1" value="2" aria-describedby="m3-wn-help">
+                <div class="range-scale" aria-hidden="true"><span>0.5</span><span>10</span></div>
+                <p class="control-help" id="m3-wn-help">How fast the system would swing with no damping. It sets the time scale.</p>
+              </div>
+              <div class="control">
+                <div class="control-row">
+                  <label for="m3-k">Static gain <span class="var">K</span></label>
+                  <output class="control-value" id="m3-k-value" for="m3-k">1.0</output>
+                </div>
+                <input type="range" id="m3-k" min="0.5" max="3" step="0.1" value="1" aria-describedby="m3-k-help">
+                <div class="range-scale" aria-hidden="true"><span>0.5</span><span>3.0</span></div>
+                <p class="control-help" id="m3-k-help">Scales the final value. The shape and timing stay the same.</p>
+              </div>
+            </div>
+
+            <div class="control-set" id="m3-set-mbk" hidden>
+              <div class="control">
+                <div class="control-row">
+                  <label for="m3-m">Mass <span class="var">m</span></label>
+                  <output class="control-value" id="m3-m-value" for="m3-m">1.0 kg</output>
+                </div>
+                <input type="range" id="m3-m" min="0.5" max="5" step="0.1" value="1" aria-describedby="m3-m-help">
+                <div class="range-scale" aria-hidden="true"><span>0.5 kg</span><span>5 kg</span></div>
+                <p class="control-help" id="m3-m-help">More mass is more inertia: slower and lower ω<sub>n</sub>.</p>
+              </div>
+              <div class="control">
+                <div class="control-row">
+                  <label for="m3-b">Damping <span class="var">b</span></label>
+                  <output class="control-value" id="m3-b-value" for="m3-b">2.0 N·s/m</output>
+                </div>
+                <input type="range" id="m3-b" min="0.5" max="20" step="0.1" value="2" aria-describedby="m3-b-help">
+                <div class="range-scale" aria-hidden="true"><span>0.5</span><span>20</span></div>
+                <p class="control-help" id="m3-b-help">Friction that drains the oscillation. It raises ζ without changing ω<sub>n</sub>.</p>
+              </div>
+              <div class="control">
+                <div class="control-row">
+                  <label for="m3-spring">Stiffness <span class="var">k</span></label>
+                  <output class="control-value" id="m3-spring-value" for="m3-spring">4.0 N/m</output>
+                </div>
+                <input type="range" id="m3-spring" min="1" max="50" step="0.5" value="4" aria-describedby="m3-spring-help">
+                <div class="range-scale" aria-hidden="true"><span>1</span><span>50</span></div>
+                <p class="control-help" id="m3-spring-help">A stiffer spring raises ω<sub>n</sub> and shrinks the final displacement 1/k.</p>
+              </div>
+            </div>
+
+            <div class="control">
+              <span class="control-row"><strong>Quick cases</strong></span>
+              <div class="preset-list">
+                <button type="button" class="btn btn-sm" data-zeta="0.5">Underdamped, ζ = 0.5</button>
+                <button type="button" class="btn btn-sm" data-zeta="1">Critically damped, ζ = 1</button>
+                <button type="button" class="btn btn-sm" data-zeta="2">Overdamped, ζ = 2</button>
+              </div>
+            </div>
+
+            <div class="control">
+              <p class="assumption" id="m3-derived"></p>
+              <button type="button" class="btn btn-block" id="m3-reset">Reset to defaults</button>
+            </div>
+          </div>
+        </section>
+
+        <div class="workspace-main">
+          <section class="card" aria-labelledby="m3-chart-title">
+            <div class="card-head">
+              <div>
+                <h2 id="m3-chart-title">Step response</h2>
+                <p class="card-sub">Rise time, peak, overshoot and settling time, read off the curve.</p>
+              </div>
+              <span class="chip chip--accent" id="m3-case-chip">Underdamped</span>
+            </div>
+            <div class="equation-strip" id="m3-eq">
+              <span class="math"><i>y</i>(<i>t</i>) = <i>K</i>[1 − <i>e</i><sup>−<i>ζω<sub>n</sub>t</i></sup>(cos <i>ω<sub>d</sub>t</i> + <span class="frac"><span><i>ζ</i></span><span>√(1−<i>ζ</i>²)</span></span> sin <i>ω<sub>d</sub>t</i>)]</span>
+              <span class="math"><i>ω<sub>d</sub></i> = <i>ω<sub>n</sub></i>√(1 − <i>ζ</i>²)</span>
+            </div>
+            <ul class="legend" id="m3-main-legend" aria-label="Main chart legend"></ul>
+            <div class="chart-box">
+              <canvas id="m3-main-chart" role="img" aria-label="Second-order step response chart"></canvas>
+              <p class="chart-fallback" data-chart-fallback hidden>The chart could not be drawn because Chart.js did not load. Check your internet connection and reload the page. The metrics, activity and validation below still work.</p>
+            </div>
+            <div class="chart-toolbar">
+              <p class="ref-status" id="m3-ref-status" aria-live="polite"></p>
+              <div class="chart-tools">
+                <button type="button" class="btn btn-sm" id="m3-pin">Pin current curve</button>
+                <button type="button" class="btn btn-sm" id="m3-unpin">Clear reference</button>
+              </div>
+            </div>
+            <p class="chart-hint">Hover or tap the chart to read exact values. The time axis stretches to fit the settling time, so compare against the dotted reference curve to see what really changed.</p>
+          </section>
+
+          <section aria-labelledby="m3-metrics-title">
+            <div class="section-head">
+              <h2 id="m3-metrics-title">Live response metrics</h2>
+              <p class="card-sub">Measured on the plotted curve, with the textbook formula beside each one.</p>
+            </div>
+            <div class="metrics">
+              <article class="metric metric--tau">
+                <h3>Damping ratio ζ</h3>
+                <p class="metric-value" id="m3-met-zeta">0.50</p>
+                <p class="metric-note" id="m3-met-zeta-note">Underdamped.</p>
+              </article>
+              <article class="metric metric--tau">
+                <h3>Natural frequency ω<sub>n</sub></h3>
+                <p class="metric-value"><span id="m3-met-wn">2.00</span><span class="metric-unit">rad/s</span></p>
+                <p class="metric-note" id="m3-met-wn-note"></p>
+              </article>
+              <article class="metric">
+                <h3>Rise time 10–90%</h3>
+                <p class="metric-value"><span id="m3-met-tr">0.00</span><span class="metric-unit">s</span></p>
+                <p class="metric-note">From 10% to 90% of the final value.</p>
+              </article>
+              <article class="metric metric--error">
+                <h3>Peak time t<sub>p</sub></h3>
+                <p class="metric-value"><span id="m3-met-tp">0.00</span><span class="metric-unit">s</span></p>
+                <p class="metric-note" id="m3-met-tp-note"></p>
+              </article>
+              <article class="metric metric--error">
+                <h3>Overshoot M<sub>p</sub></h3>
+                <p class="metric-value"><span id="m3-met-mp">0.0</span><span class="metric-unit">%</span></p>
+                <p class="metric-note" id="m3-met-mp-note"></p>
+              </article>
+              <article class="metric metric--accent">
+                <h3>Settling time t<sub>s</sub> (±2%)</h3>
+                <p class="metric-value"><span id="m3-met-ts">0.00</span><span class="metric-unit">s</span></p>
+                <p class="metric-note" id="m3-met-ts-note"></p>
+              </article>
+            </div>
+            <div class="callout">
+              <h3 id="m3-case-title"></h3>
+              <p id="m3-case-text"></p>
+            </div>
+          </section>
+
+          <div class="pair">
+            <section class="card" aria-labelledby="m3-s-title">
+              <div class="card-head">
+                <div>
+                  <h2 id="m3-s-title">Poles in the s-plane</h2>
+                  <p class="card-sub">Roots of s² + 2ζω<sub>n</sub>s + ω<sub>n</sub>² = 0.</p>
+                </div>
+                <span class="chip" id="m3-s-chip"></span>
+              </div>
+              <ul class="legend" id="m3-s-legend" aria-label="s-plane legend"></ul>
+              <div class="chart-box chart-box--square">
+                <canvas id="m3-s-chart" role="img" aria-label="Poles in the s-plane"></canvas>
+                <p class="chart-fallback" data-chart-fallback hidden>The chart could not be drawn because Chart.js did not load.</p>
+              </div>
+              <p class="pz-inline" id="m3-s-eig" aria-live="polite"></p>
+              <p class="chart-hint">For ζ &lt; 1 the poles sit on the circle of radius ω<sub>n</sub>, at an angle θ from the negative real axis where cos θ = ζ. Raise ζ and they slide toward the real axis, meet at ζ = 1, then split along it.</p>
+            </section>
+
+            <section class="card" aria-labelledby="m3-p-title">
+              <div class="card-head">
+                <div>
+                  <h2 id="m3-p-title">Phase plane</h2>
+                  <p class="card-sub">Path of (x₁, x₂) during the step.</p>
+                </div>
+                <span class="chip" id="m3-p-chip"></span>
+              </div>
+              <ul class="legend" id="m3-p-legend" aria-label="Phase plane legend"></ul>
+              <div class="chart-box chart-box--square">
+                <canvas id="m3-p-chart" role="img" aria-label="Phase plane of position against velocity"></canvas>
+                <p class="chart-fallback" data-chart-fallback hidden>The chart could not be drawn because Chart.js did not load.</p>
+              </div>
+              <p class="chart-hint" id="m3-p-note"></p>
+            </section>
+          </div>
+
+          <section class="card" aria-labelledby="m3-ss-title">
+            <div class="card-head">
+              <div>
+                <h2 id="m3-ss-title">State-space form</h2>
+                <p class="card-sub">The same mass-spring-damper, with x₁ = x (displacement) and x₂ = ẋ (velocity).</p>
+              </div>
+              <span class="chip" id="m3-ss-chip"></span>
+            </div>
+            <div class="ss-grid">
+              <div>
+                <div class="ss-line">
+                  <span class="ss-label">General form</span>
+                  <span class="math"><i>ẋ</i> = <span class="mat"><span class="mat-grid" style="grid-template-columns:repeat(2,auto)"><span>0</span><span>1</span><span>−<i>k</i>/<i>m</i></span><span>−<i>b</i>/<i>m</i></span></span></span><i>x</i> + <span class="mat"><span class="mat-grid"><span>0</span><span>1/<i>m</i></span></span></span><i>F</i>(<i>t</i>),&nbsp;&nbsp; <i>y</i> = <span class="mat"><span class="mat-grid" style="grid-template-columns:repeat(2,auto)"><span>1</span><span>0</span></span></span><i>x</i></span>
+                </div>
+                <div class="ss-line" id="m3-ss-live" aria-live="polite"></div>
+                <p class="card-text" style="margin-top:12px" id="m3-ss-note"></p>
+              </div>
+              <div>
+                <div class="pz">
+                  <div class="pz-box"><h3>Eigenvalues of A</h3><ul id="m3-eig-list"></ul></div>
+                  <div class="pz-box"><h3>Poles of G(s)</h3><ul id="m3-pole-list"></ul></div>
+                </div>
+                <p class="pz-verdict"><span class="chip" id="m3-pz-chip"></span></p>
+                <div class="readout">
+                  <div class="readout-item"><span class="readout-label">det(sI − A)</span><span class="readout-value" id="m3-charpoly"></span></div>
+                  <div class="readout-item"><span class="readout-label">RK4 vs closed form, max gap</span><span class="readout-value" id="m3-rk4-gap"></span></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="card" id="m3-predict" aria-labelledby="m3-predict-title">
+            <div class="card-head">
+              <div>
+                <h2 id="m3-predict-title">Predict, then check</h2>
+                <p class="card-sub">Commit to an answer first, then test it on the chart.</p>
+              </div>
+              <span class="chip" data-role="progress">Question 1 of 3</span>
+            </div>
+            <ol class="steps" aria-label="Activity progress">
+              <li data-step="predict">Predict</li>
+              <li data-step="check">Check</li>
+              <li data-step="observe">Observe on the chart</li>
+            </ol>
+            <fieldset class="predict-question">
+              <legend data-role="prompt"></legend>
+              <div class="choices" data-role="choices"></div>
+            </fieldset>
+            <div class="predict-actions">
+              <button type="button" class="btn btn-primary" data-role="check" disabled>Check prediction</button>
+              <button type="button" class="btn" data-role="retry" hidden>Try again</button>
+              <button type="button" class="btn" data-role="next" hidden>Next question</button>
+              <p class="predict-hint" data-role="hint">Choose an answer to enable the check.</p>
+            </div>
+            <div class="feedback" data-role="feedback" tabindex="-1" aria-live="polite" hidden></div>
+          </section>
+
+          <section class="card" aria-labelledby="m3-validation-title">
+            <div class="card-head">
+              <div>
+                <h2 id="m3-validation-title">Validation checks</h2>
+                <p class="card-sub">Validation tests 4, 5 and 6 from the lecture slides.</p>
+              </div>
+              <span class="chip" id="m3-validation-summary">Checking…</span>
+            </div>
+            <p class="card-text">Each test runs the same <code>SecondOrder</code> functions that draw the charts, with its own fixed parameters, so the table does not change when you move a slider. The last row uses your current settings.</p>
+            <div class="table-wrap">
+              <table class="validation-table">
+                <thead>
+                  <tr><th scope="col">Check</th><th scope="col">Expected</th><th scope="col">Calculated</th><th scope="col">Status</th></tr>
+                </thead>
+                <tbody id="m3-validation-body"></tbody>
+              </table>
+            </div>
+            <p class="table-note">Overshoot passes within ±0.05 points of 16.3%. Eigenvalues pass within 0.001 of the rounded slide values. Tests 1 to 3 belong to Modules 1 and 2.</p>
+          </section>
+        </div>
+      </div>
+
+      <section class="card" aria-labelledby="m3-concepts-title">
+        <div class="section-head">
+          <h2 id="m3-concepts-title">Understanding the parameters</h2>
+        </div>
+        <div class="concepts">
+          <article class="concept">
+            <h3>What makes a sensor second order?</h3>
+            <p>Two independent energy stores that trade energy back and forth: a mass and a spring, or an inductor and a capacitor. That exchange is what lets the output swing past its final value, which a first-order sensor can never do.</p>
+          </article>
+          <article class="concept">
+            <h3>What does ζ control?</h3>
+            <p>How quickly the oscillation is drained. Low ζ means a long, ringing response, ζ = 1 is the edge of oscillation, and high ζ adds friction that mostly just slows the sensor down. Overshoot depends on ζ alone.</p>
+          </article>
+          <article class="concept">
+            <h3>What does ω<sub>n</sub> control?</h3>
+            <p>The speed of the whole response. Double ω<sub>n</sub> and every time on the curve (t<sub>r</sub>, t<sub>p</sub>, t<sub>s</sub>) halves, while the shape, and so the overshoot percentage, stays exactly the same.</p>
+          </article>
+          <article class="concept">
+            <h3>Why is overshoot only a function of ζ?</h3>
+            <p>Changing ω<sub>n</sub> just rescales time. The curve is stretched horizontally, so the ratio of the peak to the final value cannot change. Only ζ changes the curve’s actual shape.</p>
+          </article>
+          <article class="concept">
+            <h3>What do the poles tell you?</h3>
+            <p>The real part sets how fast the response dies out, the imaginary part how fast it rings. Poles farther left settle faster, poles farther from the real axis oscillate faster, and ζ is the cosine of the angle they make with the negative real axis.</p>
+          </article>
+          <article class="concept">
+            <h3>Why do designers like ζ near 0.7?</h3>
+            <p>It gives about 4.6% overshoot with a rise time close to the best possible without a large ring. Critical damping is safe but slower to rise, and heavier damping only adds delay.</p>
+          </article>
+        </div>
+      </section>
+    </section>
+      </div>
+    </section>
+
+    <!-- ==================================================================
+         MODULE 4: GUESS THE SENSOR CHALLENGE
+         ================================================================== -->
+    <section class="tk-panel" id="module-4" role="tabpanel" aria-labelledby="tab-module-4" hidden>
+      <div class="tk-container tk-panel-head"><h2 class="tk-panel-title">Module 4 — Guess the Sensor Challenge</h2></div>
+      <div class="container" id="m4-root">
+
+    <p class="m4-lead">Read a noisy response curve and estimate the hidden sensor parameters. Predict first, then check your answer.</p>
+
+    <section class="card">
+      <div class="topline">
+        <div><strong id="m4-roundName">Loading sensor…</strong><p id="m4-roundHint" class="muted"></p></div>
+        <button id="m4-newBtn" class="secondary" type="button">New sensor</button>
+      </div>
+      <div id="m4-responsePlot" class="chart" role="img" aria-label="Noisy sensor response chart"></div>
+      <p class="muted small">The gray dots are measured samples. The dashed line (if present) is the known input. After your guess, the model curves appear.</p>
+    </section>
+
+    <section class="card">
+      <h2>Predict, then check</h2>
+      <p id="m4-question" class="muted"></p>
+      <form id="m4-guessForm">
+        <div id="m4-fields" class="fields"></div>
+        <div class="actions">
+          <button id="m4-checkBtn" type="submit">Check guess</button>
+          <button id="m4-hintBtn" class="secondary" type="button">Show hint</button>
+        </div>
+      </form>
+      <div id="m4-hintText" class="hint" hidden></div>
+      <div id="m4-result" class="result" hidden aria-live="polite"></div>
+    </section>
+
+    <section class="card scorebar">
+      <div><span class="muted">Rounds checked</span><strong id="m4-rounds">0</strong></div>
+      <div><span class="muted">Perfect rounds (all within 10%)</span><strong id="m4-perfect">0</strong></div>
+      <div><span class="muted">Total score</span><strong id="m4-total">0 / 0</strong></div>
+    </section>
+
+    <section class="card learn">
+      <h2>How to estimate the parameters</h2>
+      <p><strong>First-order step:</strong> Find the final output <em>KA</em>. For a unit step, K is the final output. The time at which the response first reaches 63.2% of the final change is approximately τ.</p>
+      <p><strong>First-order sine:</strong> Use the input and output phase shift to estimate τ = tan(|φ|)/ω; then K = output amplitude × √(1 + (ωτ)²) for a unit-amplitude sine.</p>
+      <p><strong>Second-order step:</strong> Use overshoot <em>OS</em> to estimate ζ, then peak time <em>tp</em> to estimate ωn. For the underdamped case: ζ = −ln(OS) / √(π² + ln²(OS)); ωn = π / (tp√(1 − ζ²)). Every second-order sensor in this challenge is underdamped, so the curve always has a peak to read.</p>
+      <p class="muted small">The noise is generated for display and is not used to evaluate the theoretical model curves.</p>
+    </section>
+      </div>
+    </section>
   </main>
 
-  <!-- ============================== FOOTER ============================== -->
-  <footer class="site-footer">
-    <div class="container footer-inner">
-      <p><strong>ENCS4380 Interfacing Techniques</strong>, Homework 1: Dynamic Characteristics Toolkit</p>
-      <p>Birzeit University, Dr. Wasel Ghanem. Team 40. Module 01: First-Order Time Response.</p>
+  <footer class="tk-footer">
+    <div class="tk-container tk-footer-inner">
+      <p><strong>ENCS4380 Interfacing Techniques</strong>, Homework 1: Dynamic Characteristics Interactive Toolkit</p>
+      <p>Birzeit University, Dr. Wasel Ghanem. Team 40.</p>
     </div>
   </footer>
 
-  <!-- Chart.js 4.4.1 (UMD build, pinned version). If it fails to load, the page shows a notice instead of charts. -->
+  <!-- Chart.js 4.4.1, loaded once for all modules. Module 4 draws its own canvas chart and does not need it. -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" referrerpolicy="no-referrer"></script>
   <script>
-  'use strict';
+  /* =========================================================================
+     TOOLKIT NAVIGATION: shows one module at a time (tabs), keeps the URL hash
+     (#module-1 ... #module-4) in sync, and resizes charts that were drawn
+     while their module was hidden.
+     ========================================================================= */
+  (function () {
+    'use strict';
+    const nav = document.querySelector('.tk-nav');
+    const header = document.querySelector('.tk-header');
+    const tabs = Array.from(document.querySelectorAll('.tk-tab'));
+    const panels = tabs.map((tab) => document.getElementById(tab.getAttribute('aria-controls')));
+
+    function showModule(index, options = {}) {
+      tabs.forEach((tab, i) => {
+        const active = i === index;
+        tab.setAttribute('aria-selected', String(active));
+        tab.tabIndex = active ? 0 : -1;
+        panels[i].hidden = !active;
+      });
+      if (options.focusTab) tabs[index].focus();
+      // A chart created inside a hidden panel has zero size; resize it now that it is visible.
+      if (window.Chart && typeof Chart.getChart === 'function') {
+        panels[index].querySelectorAll('canvas').forEach((canvas) => {
+          const chart = Chart.getChart(canvas);
+          if (chart) chart.resize();
+        });
+      }
+      // Put the module in the address (#module-2) so the link can be shared. Embedded previews such as
+      // a srcdoc frame forbid changing the address and throw a SecurityError; the switch above has
+      // already happened, so the address is simply left unchanged there.
+      if (options.updateHash) {
+        try { history.replaceState(null, '', '#' + panels[index].id); } catch (error) { /* address unchanged */ }
+      }
+    }
+
+    function indexFromHash() {
+      return panels.findIndex((panel) => '#' + panel.id === window.location.hash);
+    }
+
+    tabs.forEach((tab, i) => {
+      tab.addEventListener('click', () => {
+        showModule(i, { updateHash: true });
+        // Start the new module at its top (just below the tab bar) when the page was scrolled down.
+        if (window.scrollY > header.offsetHeight) window.scrollTo({ top: header.offsetHeight, behavior: 'auto' });
+      });
+      tab.addEventListener('keydown', (event) => {
+        const keys = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 };
+        if (!(event.key in keys)) return;
+        event.preventDefault();
+        showModule((keys[event.key] + tabs.length) % tabs.length, { updateHash: true, focusTab: true });
+      });
+    });
+
+    window.addEventListener('hashchange', () => {
+      const i = indexFromHash();
+      if (i >= 0) showModule(i);
+    });
+
+    // Measure the sticky tab bar so the sticky control panels in Modules 1 and 3 stop below it.
+    function measureNav() {
+      const sticky = getComputedStyle(nav).position === 'sticky';
+      document.documentElement.style.setProperty('--tk-nav-h', sticky ? nav.offsetHeight + 'px' : '0px');
+    }
+    if ('ResizeObserver' in window) new ResizeObserver(measureNav).observe(nav);
+    window.addEventListener('resize', measureNav);
+    measureNav();
+
+    const initial = indexFromHash();
+    showModule(initial >= 0 ? initial : 0);
+  })();
+  </script>
+  <script>
+  /* =========================================================================
+     SHARED TOOLKIT HELPERS, written for Module 1 and reused by Module 3:
+     number formatting, chart theme, a small annotation plugin, legends, the
+     validation table and the "Predict, then check" component.
+     ========================================================================= */
+  const Toolkit = (function () {
+    'use strict';
+
 
   /* =========================================================================
      1. SHARED TOOLKIT HELPERS
@@ -982,6 +2000,8 @@
     dotted: (c) => `<line x1="1" y1="6" x2="23" y2="6" stroke="${c}" stroke-width="2" stroke-dasharray="2 3"/>`,
     dot:    (c) => `<circle cx="12" cy="6" r="4.5" fill="${c}" stroke="#fff" stroke-width="1.5"/>`,
     vbar:   (c) => `<path d="M12 1.5v9M9 1.5h6M9 10.5h6" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/>`,
+    ring:   (c) => `<circle cx="12" cy="6" r="4.5" fill="none" stroke="${c}" stroke-width="2"/>`,
+    cross:  (c) => `<path d="M8.5 2.5l7 7M15.5 2.5l-7 7" stroke="${c}" stroke-width="2.25" stroke-linecap="round"/>`,
     hbar:   (c) => `<path d="M3 6h18M3 3v6M21 3v6" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/>`
   };
 
@@ -1177,6 +2197,20 @@
     };
   }
 
+    // One chart theme (fonts, text and grid colours) for every module's charts.
+    if (CHARTS_AVAILABLE) applyChartDefaults();
+
+    return { fmt, fmtTick, escapeHtml, hexToRgba, applyChartDefaults, tooltipStyle, tauTimeAxis, createGuidesPlugin, drawClipped, toPixels, drawSegment, drawMarker, roundedRectPath, drawLabel, renderLegend, renderValidation, validationCell, statusCell, createPredictCheck, THEME, CHARTS_AVAILABLE, LEGEND_SWATCHES };
+  })();
+  </script>
+  <script>
+  /* =========================================================================
+     MODULE 1: FIRST-ORDER TIME RESPONSE
+     Wrapped in its own function so its names cannot clash with other modules.
+     ========================================================================= */
+  (function () {
+    'use strict';
+    const { fmt, fmtTick, escapeHtml, hexToRgba, applyChartDefaults, tooltipStyle, tauTimeAxis, createGuidesPlugin, drawClipped, toPixels, drawSegment, drawMarker, roundedRectPath, drawLabel, renderLegend, renderValidation, validationCell, statusCell, createPredictCheck, THEME, CHARTS_AVAILABLE, LEGEND_SWATCHES } = Toolkit;
   /* =========================================================================
      2. FIRST-ORDER SENSOR MATHEMATICS (pure functions, no page access)
         Model: τ dy/dt + y = K x(t),  G(s) = K / (τs + 1), zero initial conditions.
@@ -1331,7 +2365,7 @@
 
     function createCharts() {
       if (!CHARTS_AVAILABLE) {
-        document.querySelectorAll('[data-chart-fallback]').forEach((el) => { el.hidden = false; });
+        document.getElementById('m1-root').querySelectorAll('[data-chart-fallback]').forEach((el) => { el.hidden = false; });
         return;
       }
       applyChartDefaults();
@@ -1742,10 +2776,1443 @@
     render();
   }
 
-  /* =========================================================================
-     4. START-UP — teammates: call initModule2(), initModule3(), … here.
-     ========================================================================= */
+
   initModule1();
+  })();
+  </script>
+  <script>
+  /* =========================================================================
+     MODULE 2: FIRST-ORDER FREQUENCY RESPONSE
+     Wrapped in its own function so its names cannot clash with other modules.
+     ========================================================================= */
+  (function () {
+
+    // Get the tau slider.
+    const tauSlider = document.getElementById("m2-tau");
+    const tauValue = document.getElementById("m2-tau-value");
+
+    // Get the frequency slider.
+    const frequencySlider = document.getElementById("m2-frequency");
+    const frequencyValue = document.getElementById("m2-frequency-value");
+    const tauNumber = document.getElementById("m2-tau-number");
+    const frequencyNumber = document.getElementById("m2-frequency-number");
+    const inputStatus = document.getElementById("m2-input-status");
+
+    const amplitudeValue = document.getElementById("m2-amplitude");
+    const phaseValue = document.getElementById("m2-phase");
+    const cutoffAngularValue = document.getElementById("m2-cutoff-angular");
+    const cutoffHzValue = document.getElementById("m2-cutoff-hz");
+    const dynamicErrorValue = document.getElementById("m2-dynamic-error");
+  function createPredictCheck(root, questions, hooks = {}) {
+    const part = (role) => root.querySelector(`[data-role="${role}"]`);
+    const prompt = part('prompt');
+    const choicesBox = part('choices');
+    const retryBtn = part('retry');
+    const skipBtn = part('skip');
+    const nextBtn = part('next');
+    const hint = part('hint');
+    const feedback = part('feedback');
+    const progress = part('progress');
+    const steps = root.querySelectorAll('[data-step]');
+    const groupName = root.id + '-choice';
+    let current = 0;
+    let checked = false;
+    let observed = false;
+    let predictionSaved = false;
+
+    // Update the question steps.
+    function setStage(stage) {
+      const order = ['predict', 'observe', 'check'];
+      const activeIndex = stage === 'done' ? 3 : order.indexOf(stage);
+      steps.forEach((li) => {
+        const i = order.indexOf(li.dataset.step);
+        li.classList.toggle('is-done', i < activeIndex);
+        li.classList.toggle('is-active', i === activeIndex);
+      });
+    }
+
+    function renderQuestion() {
+      const q = questions[current];
+      checked = false;
+      observed = false;
+      predictionSaved = false;
+      root.querySelector('[data-step="observe"]').textContent = 'Try the controls';
+      prompt.textContent = q.prompt;
+      progress.textContent = `Question ${current + 1} of ${questions.length}`;
+      choicesBox.replaceChildren(...q.choices.map((choice, i) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'choice';
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.name = groupName;
+        input.id = `${groupName}-${current}-${i}`;
+        input.value = String(i);
+        const label = document.createElement('label');
+        label.htmlFor = input.id;
+        label.textContent = choice.text;
+        wrap.append(input, label);
+        return wrap;
+      }));
+      hint.hidden = false;
+      hint.textContent = 'Choose your answer first.';
+      retryBtn.hidden = true;
+      skipBtn.hidden = true;
+      nextBtn.hidden = true;
+      feedback.hidden = true;
+      feedback.replaceChildren();
+      setStage('predict');
+    }
+
+    function addParagraph(text, className) {
+      const p = document.createElement('p');
+      if (className) p.className = className;
+      p.textContent = text;
+      feedback.append(p);
+      return p;
+    }
+
+    // Save the choice as soon as it is selected.
+    choicesBox.addEventListener('change', () => {
+      if (checked || !choicesBox.querySelector('input:checked')) return;
+      predictionSaved = true;
+      retryBtn.hidden = true;
+      skipBtn.hidden = false;
+      hint.hidden = false;
+      hint.textContent = 'Change the values to check your answer.';
+      setStage('observe');
+    });
+
+    // Show the result after a control changes.
+    function revealAnswer(skipMoving = false) {
+      if (!predictionSaved || (!observed && !skipMoving) || checked) return;
+      const selected = choicesBox.querySelector('input:checked');
+      if (!selected) return;
+      const q = questions[current];
+      const picked = Number(selected.value);
+      const isCorrect = q.choices[picked].correct;
+      const correctChoice = q.choices.find((c) => c.correct);
+      checked = true;
+
+      choicesBox.querySelectorAll('.choice').forEach((wrap, i) => {
+        wrap.querySelector('input').disabled = true;
+        const tag = document.createElement('span');
+        tag.className = 'choice-tag';
+        if (q.choices[i].correct) {
+          wrap.classList.add('is-correct');
+          tag.textContent = i === picked ? 'Your answer: correct' : 'Correct answer';
+          wrap.querySelector('label').append(tag);
+        } else if (i === picked) {
+          wrap.classList.add('is-wrong');
+          tag.textContent = 'Your answer';
+          wrap.querySelector('label').append(tag);
+        }
+      });
+
+      feedback.className = 'feedback ' + (isCorrect ? 'is-correct' : 'is-wrong');
+      feedback.replaceChildren();
+      addParagraph(isCorrect ? `Correct: ${correctChoice.text}` : `Not quite. The answer is: ${correctChoice.text}`, 'feedback-title');
+      addParagraph(q.explanation);
+      addParagraph(q.tryIt);
+      if (skipMoving) addParagraph('You skipped the experiment. You can still try the controls to explore the result.');
+      feedback.hidden = false;
+      skipBtn.hidden = true;
+      retryBtn.hidden = false;
+      nextBtn.hidden = current === questions.length - 1;
+      nextBtn.textContent = 'Next question';
+      hint.hidden = true;
+      setStage('done');
+      if (skipMoving) {
+        const observeStep = root.querySelector('[data-step="observe"]');
+        observeStep.classList.remove('is-done');
+        observeStep.textContent = 'Try the controls (skipped)';
+      }
+      if (hooks.onCheck) hooks.onCheck(q, isCorrect);
+    }
+
+    skipBtn.addEventListener('click', () => {
+      revealAnswer(true);
+    });
+
+    // Fix: these two listeners were outside this function, where retryBtn does not exist, so the
+    // whole script stopped with a ReferenceError. "Try again" now resets the same question, and
+    // "Next question" (which had no listener at all) moves to the next one.
+    retryBtn.addEventListener('click', () => {
+      renderQuestion();
+      const first = choicesBox.querySelector('input');
+      if (first) first.focus();
+    });
+    nextBtn.addEventListener('click', () => {
+      current = Math.min(current + 1, questions.length - 1);
+      renderQuestion();
+      prompt.scrollIntoView({ block: 'nearest' });
+    });
+
+    
+
+    renderQuestion();
+
+    return {
+      notifyInteraction() {
+        if (!predictionSaved || checked || observed) return;
+        observed = true;
+        revealAnswer();
+      }
+    };
+  }
+
+
+    // Our three questions.
+    const predictionQuestions = [
+      {
+        prompt: "With τ fixed, what happens to output amplitude when frequency increases?",
+        choices: [{ text: "It increases.", correct: false }, { text: "It decreases.", correct: true }, { text: "It stays the same.", correct: false }],
+        explanation: "M = 1 / √(1 + (ωτ)²). Increasing frequency increases ωτ, so M decreases.",
+        tryIt: "Try it: set τ = 0.2 s, then increase frequency from 1 to 2 Hz. Watch the orange output wave shrink."
+      },
+      {
+        prompt: "If τ doubles, what happens to the cutoff frequency?",
+        choices: [{ text: "It doubles.", correct: false }, { text: "It stays the same.", correct: false }, { text: "It halves.", correct: true }],
+        explanation: "fc = 1 / (2π τ), so doubling τ halves fc. A slower sensor has a smaller useful frequency range.",
+        tryIt: "Try it: change τ from 0.2 to 0.4 s. The cutoff falls from about 0.796 to 0.398 Hz."
+      },
+      {
+        prompt: "At cutoff (ωτ = 1), what are the amplitude ratio and phase shift?",
+        choices: [{ text: "M = 1 and φ = 0°.", correct: false }, { text: "M ≈ 0.707 and φ = −45°.", correct: true }, { text: "M = 0.5 and φ = −90°.", correct: false }],
+        explanation: "Substitute ωτ = 1: M = 1 / √2 and φ = −atan(1) = −45°. The magnitude is about −3.01 dB.",
+        tryIt: "Try it: set τ = 0.2 s and frequency = 0.795774715 Hz. The selected-frequency markers meet the cutoff markers."
+      }
+    ];
+    const predict = createPredictCheck(document.getElementById("m2-predict"), predictionQuestions);
+
+    // Set up the graphs.
+    let sineChart = null;
+    let magnitudeChart = null;
+    let phaseChart = null;
+
+    // Use this for both Bode graphs.
+    function createBodeChart(canvasId, axisTitle) {
+      return new Chart(document.getElementById(canvasId), {
+        type: "line",
+        data: {
+          datasets: [
+            { label: "Response", data: [], borderColor: "#2563eb", borderWidth: 2, pointRadius: 0 },
+            { label: "Cutoff", data: [], backgroundColor: "#15803d", pointRadius: 6, showLine: false },
+            { label: "Selected frequency", data: [], backgroundColor: "#c2410c", pointStyle: "triangle", pointRadius: 7, showLine: false }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          scales: {
+            x: { type: "logarithmic", title: { display: true, text: "Frequency (Hz)" } },
+            y: { title: { display: true, text: axisTitle } }
+          }
+        }
+      });
+    }
+
+    if (typeof Chart !== "undefined") {
+      magnitudeChart = createBodeChart("m2-bode-magnitude", "Magnitude (dB)");
+      phaseChart = createBodeChart("m2-bode-phase", "Phase (degrees)");
+      sineChart = new Chart(document.getElementById("m2-sine-chart"), {
+        type: "line",
+        data: {
+          datasets: [
+            { label: "Input", data: [], borderColor: "#2563eb", pointRadius: 0, borderWidth: 2 },
+            { label: "Output", data: [], borderColor: "#c2410c", borderDash: [6, 4], pointRadius: 0, borderWidth: 2 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          scales: {
+            x: { type: "linear", title: { display: true, text: "Time (seconds)" } },
+            y: { min: -1.1, max: 1.1, title: { display: true, text: "Amplitude" } }
+          }
+        }
+      });
+    } else {
+      document.getElementById("m2-chart-status").textContent =
+        "The graph library could not load. Check your internet connection and refresh. The calculations still work.";
+    }
+
+    // Calculate amplitude and phase.
+    function calculateResponse(tau, omega) {
+      const amplitudeRatio = 1 / Math.sqrt(1 + (omega * tau) ** 2);
+      const phaseRadians = -Math.atan(omega * tau);
+      const phaseDegrees = phaseRadians * 180 / Math.PI;
+      return { amplitudeRatio, phaseRadians, phaseDegrees };
+    }
+
+    function runValidation() {
+      // For sin(2t), omega is 2 rad/s.
+      const sineExample = calculateResponse(0.2, 2);
+      const maximumTau = Math.sqrt(1 / 0.95 ** 2 - 1) / (2 * Math.PI * 100);
+      const responseAt50Hz = calculateResponse(maximumTau, 2 * Math.PI * 50);
+      const checks = [
+        { name: "Check 2: amplitude ratio, τ = 0.2 s, ω = 2 rad/s", expected: 0.93, actual: sineExample.amplitudeRatio, tolerance: 0.005, unit: "" },
+        { name: "Check 2: phase lag, τ = 0.2 s, ω = 2 rad/s", expected: 21.8, actual: -sineExample.phaseDegrees, tolerance: 0.05, unit: "°" },
+        { name: "Check 3: maximum τ at 100 Hz, 5% error", expected: 0.52, actual: maximumTau * 1000, tolerance: 0.005, unit: " ms" },
+        { name: "Check 3: phase lag at 50 Hz using τmax", expected: 9.3, actual: -responseAt50Hz.phaseDegrees, tolerance: 0.05, unit: "°" }
+      ];
+      const results = document.getElementById("m2-validation-results");
+      results.replaceChildren();
+
+      // Add the test results.
+      for (const check of checks) {
+        const passed = Math.abs(check.actual - check.expected) <= check.tolerance;
+        const row = document.createElement("tr");
+        const values = [check.name, check.expected + check.unit, check.actual.toFixed(4) + check.unit,
+          "±" + check.tolerance + check.unit];
+        for (const value of values) {
+          const cell = document.createElement("td");
+          cell.textContent = value;
+          row.appendChild(cell);
+        }
+        const statusCell = document.createElement("td");
+        const badge = document.createElement("span");
+        badge.className = "status " + (passed ? "status--pass" : "status--fail");
+        badge.textContent = passed ? "PASS" : "FAIL";
+        statusCell.appendChild(badge);
+        row.appendChild(statusCell);
+        results.appendChild(row);
+      }
+    }
+
+    function updateResponse() {
+      // Convert the values to numbers.
+      const tau = Number(tauSlider.dataset.actualValue);
+      const frequency = Number(frequencySlider.dataset.actualValue);
+
+      // Convert Hz to rad/s.
+      const omega = 2 * Math.PI * frequency;
+      const { amplitudeRatio, phaseRadians, phaseDegrees } = calculateResponse(tau, omega);
+
+      // Calculate cutoff and error.
+      const cutoffAngular = 1 / tau;
+      const cutoffHz = cutoffAngular / (2 * Math.PI);
+      const dynamicError = amplitudeRatio - 1;
+
+      // Round the displayed results.
+      // Fill each track up to its handle.
+      for (const slider of [tauSlider, frequencySlider]) {
+        const fill = (Number(slider.value) - Number(slider.min)) / (Number(slider.max) - Number(slider.min)) * 100;
+        slider.style.setProperty('--fill', fill + '%');
+      }
+      tauValue.textContent = tau.toPrecision(6) + " s";
+      frequencyValue.textContent = frequency.toPrecision(6) + " Hz";
+      amplitudeValue.textContent = amplitudeRatio.toFixed(3);
+      phaseValue.textContent = phaseDegrees.toFixed(1) + "°";
+      cutoffAngularValue.textContent = cutoffAngular.toFixed(3) + " rad/s";
+      cutoffHzValue.textContent = cutoffHz.toFixed(3) + " Hz";
+      dynamicErrorValue.textContent = dynamicError.toFixed(4) + " (" + (dynamicError * 100).toFixed(2) + "%)";
+
+      if (magnitudeChart && phaseChart) {
+        const magnitudePoints = [];
+        const phasePoints = [];
+        const minimumFrequency = Math.min(cutoffHz / 100, frequency / 10);
+        const maximumFrequency = Math.max(cutoffHz * 100, frequency * 10);
+
+        // Use log spacing.
+        for (let sample = 0; sample <= 400; sample++) {
+          const plotFrequency = minimumFrequency * (maximumFrequency / minimumFrequency) ** (sample / 400);
+          const omegaTau = 2 * Math.PI * plotFrequency * tau;
+          const ratio = 1 / Math.sqrt(1 + omegaTau ** 2);
+          magnitudePoints.push({ x: plotFrequency, y: 20 * Math.log10(ratio) });
+          phasePoints.push({ x: plotFrequency, y: -Math.atan(omegaTau) * 180 / Math.PI });
+        }
+
+        // Add the graph markers.
+        magnitudeChart.data.datasets[0].data = magnitudePoints;
+        magnitudeChart.data.datasets[1].data = [{ x: cutoffHz, y: 20 * Math.log10(1 / Math.sqrt(2)) }];
+        magnitudeChart.data.datasets[2].data = [{ x: frequency, y: 20 * Math.log10(amplitudeRatio) }];
+        phaseChart.data.datasets[0].data = phasePoints;
+        phaseChart.data.datasets[1].data = [{ x: cutoffHz, y: -45 }];
+        phaseChart.data.datasets[2].data = [{ x: frequency, y: phaseDegrees }];
+        magnitudeChart.update();
+        phaseChart.update();
+      }
+
+      if (sineChart) {
+        const inputPoints = [];
+        const outputPoints = [];
+        const duration = 3 / frequency;
+
+        // Draw three cycles.
+        for (let sample = 0; sample <= 600; sample++) {
+          const time = sample * duration / 600;
+          const input = Math.sin(omega * time);
+          const output = amplitudeRatio * Math.sin(omega * time + phaseRadians);
+          inputPoints.push({ x: time, y: input });
+          outputPoints.push({ x: time, y: output });
+        }
+
+        // Update the graph.
+        sineChart.data.datasets[0].data = inputPoints;
+        sineChart.data.datasets[1].data = outputPoints;
+        sineChart.options.scales.x.max = duration;
+        sineChart.update();
+      }
+    }
+
+    // Keep the controls in sync.
+    function connectControls(slider, numberInput, name) {
+      const minimum = Number(numberInput.min);
+      const maximum = Number(numberInput.max);
+
+      // Convert the real value to a position on the track.
+      function syncPosition() {
+        const actualValue = Number(numberInput.value);
+        slider.value = 1000 * Math.log(actualValue / minimum) / Math.log(maximum / minimum);
+        slider.dataset.actualValue = actualValue;
+        slider.setAttribute('aria-valuetext', actualValue.toPrecision(6) + (slider === tauSlider ? ' seconds' : ' Hz'));
+      }
+
+      syncPosition();
+      slider.addEventListener("input", function () {
+        // Convert the track position back to seconds or Hz.
+        const fraction = Number(slider.value) / 1000;
+        const actualValue = minimum * (maximum / minimum) ** fraction;
+        numberInput.value = Math.min(maximum, Math.max(minimum, actualValue));
+        syncPosition();
+        inputStatus.textContent = "";
+        updateResponse();
+        predict.notifyInteraction();
+      });
+      numberInput.addEventListener("input", function () {
+        // Check the entered number.
+        if (!numberInput.checkValidity() || !Number.isFinite(numberInput.valueAsNumber)) {
+          inputStatus.textContent = "Enter " + name + " between " + numberInput.min + " and " + numberInput.max + ". The graphs still show the last valid values.";
+          return;
+        }
+        syncPosition();
+        inputStatus.textContent = "";
+        updateResponse();
+        predict.notifyInteraction();
+      });
+    }
+
+    connectControls(tauSlider, tauNumber, "τ in seconds");
+    connectControls(frequencySlider, frequencyNumber, "frequency in Hz");
+
+    // Show the starting results.
+    updateResponse();
+    runValidation();
+  })();
+  </script>
+  <script>
+  /* =========================================================================
+     MODULE 3: SECOND-ORDER RESPONSE AND STATE SPACE
+     Wrapped in its own function so its names cannot clash with other modules.
+     ========================================================================= */
+  (function () {
+    'use strict';
+    const { fmt, fmtTick, escapeHtml, hexToRgba, applyChartDefaults, tooltipStyle, tauTimeAxis, createGuidesPlugin, drawClipped, toPixels, drawSegment, drawMarker, roundedRectPath, drawLabel, renderLegend, renderValidation, validationCell, statusCell, createPredictCheck, THEME, CHARTS_AVAILABLE, LEGEND_SWATCHES } = Toolkit;
+  const SecondOrder = {
+    classify(zeta) {
+      if (Math.abs(zeta - 1) < 1e-9) return 'critical';
+      return zeta < 1 ? 'under' : 'over';
+    },
+
+    poles(zeta, wn) {
+      const kind = this.classify(zeta);
+      if (kind === 'under') {
+        const d = wn * Math.sqrt(1 - zeta * zeta);
+        return [{ re: -zeta * wn, im: d }, { re: -zeta * wn, im: -d }];
+      }
+      if (kind === 'critical') return [{ re: -wn, im: 0 }, { re: -wn, im: 0 }];
+      const r = wn * Math.sqrt(zeta * zeta - 1);
+      return [{ re: -zeta * wn + r, im: 0 }, { re: -zeta * wn - r, im: 0 }];
+    },
+
+    // eigenvalues of A = [[0, 1], [-k/m, -b/m]] from its trace and determinant
+    eigenvalues(m, b, k) {
+      const tr = -b / m;
+      const det = k / m;
+      const disc = tr * tr / 4 - det;
+      if (disc < 0) {
+        const d = Math.sqrt(-disc);
+        return [{ re: tr / 2, im: d }, { re: tr / 2, im: -d }];
+      }
+      const r = Math.sqrt(disc);
+      return [{ re: tr / 2 + r, im: 0 }, { re: tr / 2 - r, im: 0 }];
+    },
+
+    // unit step response (K = 1)
+    step(t, zeta, wn) {
+      if (t <= 0) return 0;
+      const kind = this.classify(zeta);
+      if (kind === 'under') {
+        const s = zeta * wn;
+        const d = wn * Math.sqrt(1 - zeta * zeta);
+        return 1 - Math.exp(-s * t) * (Math.cos(d * t) + (s / d) * Math.sin(d * t));
+      }
+      if (kind === 'critical') return 1 - (1 + wn * t) * Math.exp(-wn * t);
+      const [p1, p2] = this.poles(zeta, wn).map((p) => p.re);
+      return 1 - (p2 * Math.exp(p1 * t) - p1 * Math.exp(p2 * t)) / (p2 - p1);
+    },
+
+    overshootFormula(zeta) {
+      return zeta < 1 - 1e-9 ? Math.exp(-Math.PI * zeta / Math.sqrt(1 - zeta * zeta)) : 0;
+    },
+
+    peakTimeFormula(zeta, wn) {
+      return Math.PI / (wn * Math.sqrt(1 - zeta * zeta));
+    }
+  };
+
+  // Reads rise time, peak, overshoot and settling time off a finely sampled step curve.
+  function measure(zeta, wn) {
+    const slow = Math.min(...SecondOrder.poles(zeta, wn).map((p) => Math.abs(p.re)));
+    const N = 20000;
+    const dt = (10 / slow) / N;
+    let t10 = NaN, t90 = NaN, ymax = 0, tPeak = 0, tSettle = 0, prev = 0;
+    for (let i = 1; i <= N; i++) {
+      const t = i * dt;
+      const y = SecondOrder.step(t, zeta, wn);
+      if (Number.isNaN(t10) && y >= 0.1) t10 = t - dt + dt * (0.1 - prev) / (y - prev);
+      if (Number.isNaN(t90) && y >= 0.9) t90 = t - dt + dt * (0.9 - prev) / (y - prev);
+      if (y > ymax) { ymax = y; tPeak = t; }
+      if (Math.abs(y - 1) > 0.02) tSettle = t;
+      prev = y;
+    }
+    const overshoots = ymax > 1 + 1e-9;
+    return {
+      t10, t90, tr: t90 - t10,
+      ymax, mp: overshoots ? (ymax - 1) * 100 : 0,
+      tp: overshoots ? tPeak : NaN,
+      ts: tSettle
+    };
+  }
+
+  function niceCeil(x) {
+    const p = Math.pow(10, Math.floor(Math.log10(x)));
+    const m = x / p;
+    const step = [1, 1.5, 2, 3, 4, 5, 6, 8, 10].find((s) => s >= m - 1e-9);
+    return step * p;
+  }
+
+  // RK4 on x' = A x + B F, returns every sample as { t, x1, x2 }
+  function simulateStateSpace(m, b, k, F, T, steps) {
+    const f = (x1, x2) => [x2, (F - k * x1 - b * x2) / m];
+    const dt = T / steps;
+    const out = [{ t: 0, x1: 0, x2: 0 }];
+    let x1 = 0, x2 = 0;
+    for (let i = 1; i <= steps; i++) {
+      const [a1, a2] = f(x1, x2);
+      const [b1, b2] = f(x1 + dt / 2 * a1, x2 + dt / 2 * a2);
+      const [c1, c2] = f(x1 + dt / 2 * b1, x2 + dt / 2 * b2);
+      const [d1, d2] = f(x1 + dt * c1, x2 + dt * c2);
+      x1 += dt / 6 * (a1 + 2 * b1 + 2 * c1 + d1);
+      x2 += dt / 6 * (a2 + 2 * b2 + 2 * c2 + d2);
+      out.push({ t: i * dt, x1, x2 });
+    }
+    return out;
+  }
+
+  function sortPoles(list) {
+    return [...list].sort((p, q) => (q.re - p.re) || (q.im - p.im));
+  }
+
+  function poleGap(a, b) {
+    const sa = sortPoles(a), sb = sortPoles(b);
+    return Math.max(...sa.map((p, i) => Math.hypot(p.re - sb[i].re, p.im - sb[i].im)));
+  }
+
+  function fmtComplex(c, decimals = 3) {
+    if (Math.abs(c.im) < 5e-7) return fmt(c.re, decimals);
+    return `${fmt(c.re, decimals)} ${c.im < 0 ? '\u2212' : '+'} j${fmt(Math.abs(c.im), decimals)}`;
+  }
+
+  function initModule3() {
+    const DEFAULTS = Object.freeze({ mode: 'zw', zeta: 0.5, wn: 2, K: 1, m: 1, b: 2, k: 4 });
+    const LIMITS = {
+      zeta: [0.05, 2.5, 0.05], wn: [0.5, 10, 0.1], K: [0.5, 3, 0.1],
+      m: [0.5, 5, 0.1], b: [0.5, 20, 0.1], k: [1, 50, 0.5]
+    };
+    const state = Object.assign({}, DEFAULTS, { reference: null });
+
+    const $ = (id) => document.getElementById(id);
+    const ui = {
+      modeRadios: document.querySelectorAll('input[name="m3-mode"]'), modeHelp: $('m3-mode-help'),
+      setZW: $('m3-set-zw'), setMBK: $('m3-set-mbk'),
+      sliders: {
+        zeta: $('m3-zeta'), wn: $('m3-wn'), K: $('m3-k'), m: $('m3-m'), b: $('m3-b'), k: $('m3-spring')
+      },
+      outputs: {
+        zeta: $('m3-zeta-value'), wn: $('m3-wn-value'), K: $('m3-k-value'),
+        m: $('m3-m-value'), b: $('m3-b-value'), k: $('m3-spring-value')
+      },
+      derived: $('m3-derived'), reset: $('m3-reset'), pin: $('m3-pin'), unpin: $('m3-unpin'),
+      refStatus: $('m3-ref-status'), caseChip: $('m3-case-chip'),
+      mainLegend: $('m3-main-legend'), mainCanvas: $('m3-main-chart'),
+      sLegend: $('m3-s-legend'), sEig: $('m3-s-eig'), sCanvas: $('m3-s-chart'), sChip: $('m3-s-chip'),
+      pLegend: $('m3-p-legend'), pCanvas: $('m3-p-chart'), pChip: $('m3-p-chip'), pNote: $('m3-p-note'),
+      ssLive: $('m3-ss-live'), ssNote: $('m3-ss-note'), ssChip: $('m3-ss-chip'),
+      eigList: $('m3-eig-list'), poleList: $('m3-pole-list'), pzChip: $('m3-pz-chip'),
+      charPoly: $('m3-charpoly'), rk4Gap: $('m3-rk4-gap'),
+      caseTitle: $('m3-case-title'), caseText: $('m3-case-text'),
+      validationBody: $('m3-validation-body'), validationSummary: $('m3-validation-summary')
+    };
+
+    let mainChart = null, sChart = null, pChart = null;
+    let mainGuides = null, sGuides = null, pGuides = null;
+
+    const QUESTIONS = [
+      {
+        prompt: 'With ω\u2099 fixed, ζ is raised from 0.3 to 0.8. What happens to the overshoot?',
+        choices: [
+          { text: 'It grows, because there is more damping to push against.', correct: false },
+          { text: 'It shrinks a lot, from about 37% to about 1.5%.', correct: true },
+          { text: 'It stays the same, because only ω\u2099 sets the overshoot.', correct: false }
+        ],
+        explanation: 'Overshoot is M\u209a = e^(\u2212\u03c0\u03b6/\u221a(1\u2212\u03b6\u00b2)). At \u03b6 = 0.3 that is 37.2%, at \u03b6 = 0.8 only 1.5%. More damping drains the oscillation sooner, so the output has less energy left to carry it past the final value.',
+        tryIt: 'Your current curve is pinned as the dotted reference. In the \u03b6 and \u03c9\u2099 controls, drag \u03b6 up toward 0.8 and watch the overshoot card fall.'
+      },
+      {
+        prompt: 'You double ω\u2099 and keep ζ = 0.5. Which statement is true?',
+        choices: [
+          { text: 'Overshoot doubles and the peak comes at the same time.', correct: false },
+          { text: 'Overshoot stays at 16.3%, but the peak comes in half the time.', correct: true },
+          { text: 'Overshoot halves and the peak comes at the same time.', correct: false }
+        ],
+        explanation: 'Doubling \u03c9\u2099 only speeds the clock up: t\u209a = \u03c0 / (\u03c9\u2099\u221a(1\u2212\u03b6\u00b2)) is halved. The shape of the curve, and with it the overshoot percentage, is a function of \u03b6 alone.',
+        tryIt: 'Pin the curve, then move \u03c9\u2099 from 2 to 4. The live curve is the reference squeezed in time, with the same height at its peak.'
+      },
+      {
+        prompt: 'ζ increases from 0.2 to 0.9 with ω\u2099 fixed. Where do the poles go in the s-plane?',
+        choices: [
+          { text: 'They slide along the circle of radius \u03c9\u2099, toward the negative real axis.', correct: true },
+          { text: 'They move straight up, away from the real axis.', correct: false },
+          { text: 'They stay where they are. Only the curve changes.', correct: false }
+        ],
+        explanation: 'For \u03b6 < 1 the poles are \u2212\u03b6\u03c9\u2099 \u00b1 j\u03c9\u2099\u221a(1\u2212\u03b6\u00b2), whose distance from the origin is always \u03c9\u2099. Only the angle changes: cos \u03b8 = \u03b6, so a larger \u03b6 tips them down toward the real axis, where they meet at \u03b6 = 1.',
+        tryIt: 'Pin the curve and drag \u03b6 up. The pinned poles stay as grey crosses in the s-plane, so you can see where the live poles moved from.'
+      }
+    ];
+
+    /* ---------- state and derived values ---------- */
+
+    function derive(s) {
+      if (s.mode === 'zw') {
+        const k = s.wn * s.wn;
+        return { zeta: s.zeta, wn: s.wn, K: s.K, m: 1, b: 2 * s.zeta * s.wn, k, F: s.K * k };
+      }
+      return {
+        zeta: s.b / (2 * Math.sqrt(s.k * s.m)), wn: Math.sqrt(s.k / s.m), K: 1 / s.k,
+        m: s.m, b: s.b, k: s.k, F: 1
+      };
+    }
+
+    function snap(key, value) {
+      const [min, max, step] = LIMITS[key];
+      const clamped = Math.min(max, Math.max(min, value));
+      return Number((Math.round((clamped - min) / step) * step + min).toFixed(4));
+    }
+
+    function switchMode(next) {
+      if (next === state.mode) return;
+      const d = derive(state);
+      if (next === 'mbk') {
+        state.m = snap('m', d.m); state.b = snap('b', d.b); state.k = snap('k', d.k);
+      } else {
+        state.zeta = snap('zeta', d.zeta); state.wn = snap('wn', d.wn); state.K = snap('K', d.K);
+      }
+      state.mode = next;
+    }
+
+    function visibleReference(d) {
+      const r = state.reference;
+      if (!r) return null;
+      const same = ['zeta', 'wn', 'K'].every((key) => Math.abs(r[key] - d[key]) < 1e-9);
+      return same ? null : r;
+    }
+
+    function refText(r) {
+      return `\u03b6 = ${r.zeta.toFixed(2)}, \u03c9n = ${r.wn.toFixed(1)} rad/s, K = ${r.K.toFixed(2)}`;
+    }
+
+    const CASE_NAME = { under: 'Underdamped', critical: 'Critically damped', over: 'Overdamped' };
+
+    /* ---------- charts ---------- */
+
+    function timeTitle(items) {
+      return items.length ? `t = ${fmt(items[0].parsed.x, 2)} s` : '';
+    }
+
+    function createCharts() {
+      if (!CHARTS_AVAILABLE) {
+        document.getElementById('m3-root').querySelectorAll('[data-chart-fallback]').forEach((el) => { el.hidden = false; });
+        return;
+      }
+      applyChartDefaults();
+      const base = () => ({
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        parsing: false,
+        normalized: true,
+        elements: { point: { radius: 0, hoverRadius: 4, hitRadius: 6, hoverBorderWidth: 2 } },
+        layout: { padding: { top: 6, right: 10 } }
+      });
+      const axisTitle = (text) => ({ display: true, text, font: { weight: '600' } });
+
+      mainChart = new Chart(ui.mainCanvas, {
+        type: 'line',
+        data: {
+          datasets: [
+            { role: 'ideal', label: 'Final value K', data: [], borderColor: THEME.ideal, backgroundColor: THEME.ideal,
+              borderWidth: 1.5, borderDash: [6, 5], order: 1, pointHoverBackgroundColor: '#fff' },
+            { role: 'output', label: 'Sensor output y(t)', data: [], borderColor: THEME.output, backgroundColor: THEME.output,
+              borderWidth: 2.75, order: 0, pointHoverBackgroundColor: '#fff' },
+            { role: 'reference', label: 'Reference', data: [], borderColor: THEME.reference, backgroundColor: THEME.reference,
+              borderWidth: 2, borderDash: [2, 3], order: 2, hidden: true, pointHoverBackgroundColor: '#fff' }
+          ]
+        },
+        options: Object.assign(base(), {
+          interaction: { mode: 'index', intersect: false },
+          scales: {
+            x: { type: 'linear', min: 0, title: axisTitle('Time t (s)'), grid: { color: THEME.grid }, border: { color: THEME.axis } },
+            y: { beginAtZero: true, grace: '8%', title: axisTitle('Output y(t)'), grid: { color: THEME.grid }, border: { color: THEME.axis } }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: Object.assign(tooltipStyle(), {
+              itemSort: (a, b) => a.datasetIndex - b.datasetIndex,
+              callbacks: {
+                title: timeTitle,
+                label: (item) => item.dataset.role === 'output'
+                  ? ` Sensor output y(t): ${fmt(item.parsed.y, 3)}  (${fmt(100 * item.parsed.y / currentK, 1)}% of final)`
+                  : ` ${item.dataset.label}: ${fmt(item.parsed.y, 3)}`
+              }
+            })
+          }
+        }),
+        plugins: [createGuidesPlugin(() => mainGuides)]
+      });
+
+      sChart = new Chart(ui.sCanvas, {
+        type: 'scatter',
+        data: {
+          datasets: [
+            { role: 'circle', label: '|s| = \u03c9n', data: [], showLine: true, borderColor: THEME.reference, borderWidth: 1.5,
+              borderDash: [5, 4], pointRadius: 0, hoverRadius: 0, order: 3 },
+            { role: 'refpoles', label: 'Pinned poles', data: [], showLine: false, pointStyle: 'crossRot', pointRadius: 7,
+              borderColor: THEME.reference, borderWidth: 2.5, order: 2, hidden: true },
+            { role: 'poles', label: 'Poles', data: [], showLine: false, pointStyle: 'crossRot', pointRadius: 9, hoverRadius: 10,
+              borderColor: THEME.output, borderWidth: 3.5, order: 0 },
+            { role: 'eig', label: 'Eigenvalues of A', data: [], showLine: false, pointStyle: 'circle', pointRadius: 13, hoverRadius: 14,
+              borderColor: THEME.tau, backgroundColor: 'rgba(0, 0, 0, 0)', borderWidth: 2, order: 1 }
+          ]
+        },
+        options: Object.assign(base(), {
+          normalized: false,
+          interaction: { mode: 'nearest', intersect: true },
+          scales: {
+            x: { type: 'linear', title: axisTitle('Real part (1/s)'), grid: { color: THEME.grid }, border: { color: THEME.axis } },
+            y: { type: 'linear', title: axisTitle('Imaginary part (rad/s)'), grid: { color: THEME.grid }, border: { color: THEME.axis } }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: Object.assign(tooltipStyle(), {
+              filter: (item) => item.dataset.role !== 'circle',
+              callbacks: {
+                title: () => '',
+                label: (item) => ` ${item.dataset.label}: s = ${fmtComplex({ re: item.parsed.x, im: item.parsed.y }, 3)}`
+              }
+            })
+          }
+        }),
+        plugins: [createGuidesPlugin(() => sGuides)]
+      });
+
+      pChart = new Chart(ui.pCanvas, {
+        type: 'scatter',
+        data: {
+          datasets: [
+            { role: 'path', label: 'Path', data: [], showLine: true, borderColor: THEME.output, borderWidth: 2.25,
+              pointRadius: 0, hoverRadius: 4, order: 0 }
+          ]
+        },
+        options: Object.assign(base(), {
+          normalized: false,
+          interaction: { mode: 'nearest', intersect: false },
+          scales: {
+            x: { type: 'linear', beginAtZero: true, grace: '8%', title: axisTitle('Position x\u2081 (m)'), grid: { color: THEME.grid }, border: { color: THEME.axis } },
+            y: { type: 'linear', beginAtZero: true, grace: '8%', title: axisTitle('Velocity x\u2082 (m/s)'), grid: { color: THEME.grid }, border: { color: THEME.axis } }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: Object.assign(tooltipStyle(), {
+              callbacks: {
+                title: (items) => items.length ? `t = ${fmt(items[0].raw.t, 2)} s` : '',
+                label: (item) => ` x\u2081 = ${fmt(item.parsed.x, 3)},  x\u2082 = ${fmt(item.parsed.y, 3)}`
+              }
+            })
+          }
+        }),
+        plugins: [createGuidesPlugin(() => pGuides)]
+      });
+    }
+
+    let currentK = 1;
+    const BIG = 1e6;
+
+    function mainGuidesFor(d, met, span) {
+      const K = d.K;
+      const lines = [
+        { x1: 0, y1: 1.02 * K, x2: span, y2: 1.02 * K, color: hexToRgba(THEME.tau3, 0.3), dash: [2, 4] },
+        { x1: 0, y1: 0.98 * K, x2: span, y2: 0.98 * K, color: hexToRgba(THEME.tau3, 0.3), dash: [2, 4] },
+        { x1: met.ts, y1: 0, x2: met.ts, y2: K, color: hexToRgba(THEME.tau3, 0.55), dash: [3, 4] },
+        { x1: met.t10, y1: 0.03 * K, x2: met.t10, y2: 0.1 * K, color: hexToRgba(THEME.tau, 0.7), dash: [3, 3] },
+        { x1: met.t90, y1: 0.03 * K, x2: met.t90, y2: 0.9 * K, color: hexToRgba(THEME.tau, 0.7), dash: [3, 3] }
+      ];
+      const segments = [{ x1: met.t10, y1: 0.03 * K, x2: met.t90, y2: 0.03 * K, color: THEME.tau, width: 2.5, caps: true }];
+      const markers = [
+        { x: met.t10, y: 0.1 * K, color: THEME.tau },
+        { x: met.t90, y: 0.9 * K, color: THEME.tau },
+        { x: met.ts, y: K * SecondOrder.step(met.ts, d.zeta, d.wn), color: THEME.tau3 }
+      ];
+      const labels = [
+        { x: met.t90, y: 0.03 * K, dx: 10, dy: 0, text: `t\u1d63 = ${fmt(met.tr, 2)} s`, short: fmt(met.tr, 2) + ' s', color: THEME.tau },
+        { x: met.ts, y: 0.3 * K, dx: 8, text: `t\u209b = ${fmt(met.ts, 2)} s`, short: fmt(met.ts, 1) + ' s', color: THEME.tau3 },
+        { x: span, y: K, dx: -2, dy: -14, align: 'right', text: `Final value = ${fmt(K, 3)}`, short: fmt(K, 2), color: THEME.ideal }
+      ];
+      if (Number.isFinite(met.tp)) {
+        const peak = K * met.ymax;
+        lines.push({ x1: met.tp, y1: 0, x2: met.tp, y2: K, color: hexToRgba(THEME.error, 0.6), dash: [3, 4] });
+        segments.push({ x1: met.tp, y1: K, x2: met.tp, y2: peak, color: THEME.error, width: 2.5, caps: true });
+        markers.push({ x: met.tp, y: peak, color: THEME.error });
+        labels.push({
+          x: met.tp, y: peak, dx: 10, dy: -12,
+          text: `Overshoot ${fmt(met.mp, 1)}% at t\u209a = ${fmt(met.tp, 2)} s`, short: `${fmt(met.mp, 1)}%`, color: THEME.errorText
+        });
+      } else {
+        labels.push({ x: met.t90, y: 0.9 * K, dx: -10, dy: -16, align: 'right', text: 'No overshoot', short: 'No overshoot', color: THEME.errorText });
+      }
+      return { lines, segments, markers, labels };
+    }
+
+    function mainLegendItems(hasPeak, ref) {
+      const items = [
+        { label: 'Final value K', kind: 'dashed', color: THEME.ideal },
+        { label: 'Sensor output y(t)', kind: 'line', color: THEME.output },
+        { label: '10% and 90% points, rise time', kind: 'hbar', color: THEME.tau },
+        { label: '\u00b12% band and settling time', kind: 'dot', color: THEME.tau3 }
+      ];
+      if (hasPeak) items.push({ label: 'Peak and overshoot', kind: 'vbar', color: THEME.error });
+      if (ref) items.push({ label: `Reference (${refText(ref)})`, kind: 'dotted', color: THEME.reference });
+      return items;
+    }
+
+    function poleLabel(p) {
+      return Math.abs(p.im) < 5e-7 ? fmt(p.re, 2) : `${fmt(p.re, 2)} \u00b1 j${fmt(Math.abs(p.im), 2)}`;
+    }
+
+    function updatePoleChart(d, kind, ref) {
+      const poles = SecondOrder.poles(d.zeta, d.wn);
+      const refPoles = ref ? SecondOrder.poles(ref.zeta, ref.wn) : [];
+      // Fix: square view with equal scales (so the |s| = wn circle stays round) that always contains the
+      // left half of that circle, the origin and every pole, plus an 18% margin. The old fixed limits
+      // (+-0.625 * 1.18 * wn vertically) cut the poles off the plot whenever zeta was below about 0.67.
+      const marked = [...poles, ...refPoles];
+      const left = Math.min(-d.wn, ...marked.map((p) => p.re));
+      const top = Math.max(d.wn, ...marked.map((p) => Math.abs(p.im)));
+      const side = 1.18 * Math.max(-left, 2 * top);
+      const centreX = left / 2;
+      const circle = Array.from({ length: 121 }, (_, i) => {
+        const a = (i / 120) * 2 * Math.PI;
+        return { x: d.wn * Math.cos(a), y: d.wn * Math.sin(a) };
+      });
+      const ink = hexToRgba(THEME.ideal, 0.45);
+      const guides = {
+        lines: [
+          { x1: -BIG, y1: 0, x2: BIG, y2: 0, color: ink, width: 1.25 },
+          { x1: 0, y1: -BIG, x2: 0, y2: BIG, color: ink, width: 1.25 }
+        ],
+        segments: [],
+        markers: [],
+        labels: []
+      };
+      if (kind === 'under') {
+        poles.forEach((p) => guides.lines.push({ x1: 0, y1: 0, x2: p.re, y2: p.im, color: hexToRgba(THEME.error, 0.7), dash: [4, 4] }));
+        guides.labels.push({ x: poles[0].re, y: poles[0].im, dx: 10, dy: -12, text: poleLabel(poles[0]), short: poleLabel(poles[0]), color: THEME.output });
+        const theta = Math.acos(d.zeta) * 180 / Math.PI;
+        guides.labels.push({ x: poles[0].re / 2, y: poles[0].im / 2, dx: -6, dy: 14, align: 'right', text: `\u03b8 = ${fmt(theta, 1)}\u00b0, cos \u03b8 = \u03b6`, short: `\u03b8 = ${fmt(theta, 0)}\u00b0`, color: THEME.errorText });
+      } else if (kind === 'critical') {
+        guides.labels.push({ x: poles[0].re, y: 0, dx: 0, dy: -20, align: 'center', text: `${fmt(poles[0].re, 2)} (double)`, short: `${fmt(poles[0].re, 2)} \u00d72`, color: THEME.output });
+      } else {
+        poles.forEach((p, i) => guides.labels.push({ x: p.re, y: 0, dx: 0, dy: i === 0 ? -20 : 20, align: 'center', text: fmt(p.re, 2), short: fmt(p.re, 2), color: THEME.output }));
+      }
+      sGuides = guides;
+
+      const eig = SecondOrder.eigenvalues(d.m, d.b, d.k);   // computed from A, independently of the poles
+      const [circleSet, refSet, poleSet, eigSet] = sChart.data.datasets;
+      eigSet.data = eig.map((p) => ({ x: p.re, y: p.im }));
+      circleSet.data = circle;
+      poleSet.data = poles.map((p) => ({ x: p.re, y: p.im }));
+      refSet.hidden = !ref;
+      refSet.data = refPoles.map((p) => ({ x: p.re, y: p.im }));
+      sChart.options.scales.x.min = centreX - side / 2;
+      sChart.options.scales.x.max = centreX + side / 2;
+      sChart.options.scales.y.min = -side / 2;
+      sChart.options.scales.y.max = side / 2;
+      sChart.update('none');
+
+      const pairText = (list) => Math.abs(list[0].im) > 5e-7
+        ? `${fmt(list[0].re, 3)} \u00b1 j${fmt(Math.abs(list[0].im), 3)}`
+        : list.map((p) => fmt(p.re, 3)).join(' and ');
+      const sameNumbers = poleGap(eig, poles) < 1e-6;
+      ui.sEig.textContent = `Eigenvalues of A (rings): ${pairText(eig)}. Poles of G(s) (crosses): ${pairText(poles)}. ` +
+        (sameNumbers ? 'They are the same numbers.' : 'They differ.');
+
+      const legend = [
+        { label: 'Poles of G(s)', kind: 'cross', color: THEME.output },
+        { label: 'Eigenvalues of A', kind: 'ring', color: THEME.tau },
+        { label: 'Circle |s| = \u03c9n', kind: 'dashed', color: THEME.reference }
+      ];
+      if (kind === 'under') legend.push({ label: 'Lines at angle \u03b8 from the real axis', kind: 'dashed', color: THEME.error });
+      if (ref) legend.push({ label: 'Pinned poles', kind: 'cross', color: THEME.reference });
+      renderLegend(ui.sLegend, legend);
+    }
+
+    function updatePhasePlane(d, span, kind) {
+      const steps = Math.min(40000, Math.max(2000, Math.ceil(span * d.wn * 40)));
+      const sim = simulateStateSpace(d.m, d.b, d.k, d.F, span, steps);
+      const every = Math.max(1, Math.floor(steps / 1500));
+      const path = [];
+      for (let i = 0; i < sim.length; i += every) path.push({ x: sim[i].x1, y: sim[i].x2, t: sim[i].t });
+
+      let crossings = 0, gap = 0, prevSide = 0;
+      sim.forEach((s) => {
+        const side = Math.sign(s.x1 - d.K);
+        if (side !== 0 && prevSide !== 0 && side !== prevSide) crossings++;
+        if (side !== 0) prevSide = side;
+        gap = Math.max(gap, Math.abs(s.x1 / d.K - SecondOrder.step(s.t, d.zeta, d.wn)));
+      });
+      ui.rk4Gap.textContent = gap < 1e-9 ? '< 1e-9' : gap.toExponential(1);
+
+      if (pChart) drawPhase(d, path);
+      ui.pChip.textContent = kind === 'under' ? 'spiral' : 'no spiral';
+      ui.pChip.className = 'chip ' + (kind === 'under' ? 'chip--accent' : '');
+      ui.pNote.textContent = kind === 'under'
+        ? `The path spirals into the rest point and crosses the line x\u2081 = ${fmt(d.K, 3)} ${crossings} ${crossings === 1 ? 'time' : 'times'}: each crossing is one pass through the final value of the step response.`
+        : 'The path goes straight from the start to the rest point without crossing the line x\u2081 = final. Velocity rises, peaks and dies away, and the position never overshoots.';
+    }
+
+    function drawPhase(d, path) {
+      pGuides = {
+        lines: [
+          { x1: -BIG, y1: 0, x2: BIG, y2: 0, color: hexToRgba(THEME.ideal, 0.4), width: 1.25 },
+          { x1: 0, y1: -BIG, x2: 0, y2: BIG, color: hexToRgba(THEME.ideal, 0.4), width: 1.25 },
+          { x1: d.K, y1: -BIG, x2: d.K, y2: BIG, color: hexToRgba(THEME.error, 0.6), dash: [4, 4] }
+        ],
+        segments: [],
+        markers: [{ x: 0, y: 0, color: THEME.tau }, { x: d.K, y: 0, color: THEME.error }],
+        labels: [
+          { x: 0, y: 0, dx: 10, dy: 14, text: 'start (0, 0)', short: 'start', color: THEME.tau },
+          { x: d.K, y: 0, dx: 10, dy: 16, text: `rest x\u2081 = ${fmt(d.K, 3)}`, short: 'rest', color: THEME.errorText }
+        ]
+      };
+      pChart.data.datasets[0].data = path;
+      pChart.update('none');
+
+      renderLegend(ui.pLegend, [
+        { label: 'Path of (x\u2081, x\u2082) over the step', kind: 'line', color: THEME.output },
+        { label: 'Start at rest', kind: 'dot', color: THEME.tau },
+        { label: 'Final rest position', kind: 'dot', color: THEME.error }
+      ]);
+    }
+
+    /* ---------- state-space panel ---------- */
+
+    function matHTML(rows, decimals) {
+      const cols = rows[0].length;
+      const cells = rows.flat().map((v) => `<span>${typeof v === 'number' ? fmt(v, decimals) : v}</span>`).join('');
+      return `<span class="mat"><span class="mat-grid" style="grid-template-columns:repeat(${cols},auto)">${cells}</span></span>`;
+    }
+
+    function updateStateSpace(d) {
+      const A = [[0, 1], [-d.k / d.m, -d.b / d.m]];
+      const B = [[0], [1 / d.m]];
+      ui.ssLive.innerHTML =
+        `<span class="ss-label">With your numbers</span>` +
+        `<span class="math"><i>A</i> =${matHTML(A, 2)}&nbsp; <i>B</i> =${matHTML(B, 2)}&nbsp; <i>C</i> =${matHTML([[1, 0]], 0)}</span>`;
+      const eig = SecondOrder.eigenvalues(d.m, d.b, d.k);
+      const poles = SecondOrder.poles(d.zeta, d.wn);
+      ui.eigList.innerHTML = eig.map((c, i) => `<li>\u03bb${i + 1} = ${fmtComplex(c)}</li>`).join('');
+      ui.poleList.innerHTML = poles.map((c, i) => `<li>p${i + 1} = ${fmtComplex(c)}</li>`).join('');
+      const diff = poleGap(eig, poles);
+      const same = diff < 1e-6;
+      ui.pzChip.textContent = same ? 'Same numbers' : 'They differ';
+      ui.pzChip.className = 'chip ' + (same ? 'chip--pass' : 'chip--fail');
+      ui.charPoly.textContent = `s\u00b2 + ${fmt(d.b / d.m, 2)}s + ${fmt(d.k / d.m, 2)}`;
+      ui.ssChip.textContent = `m = ${fmt(d.m, 1)}, b = ${fmt(d.b, 2)}, k = ${fmt(d.k, 2)}`;
+      ui.ssNote.textContent = state.mode === 'zw'
+        ? `In the \u03b6 and \u03c9\u2099 view the mass is fixed at m = 1 kg, so b = 2\u03b6\u03c9\u2099 and k = \u03c9\u2099\u00b2. The force step is F = K\u00b7k = ${fmt(d.F, 2)} N, which gives the final position K = ${fmt(d.K, 2)}.`
+        : `The force step is F = 1 N, so the final position is 1/k = ${fmt(d.K, 3)} m. In the standard form this is the gain K = 1/k.`;
+    }
+
+    /* ---------- validation ---------- */
+
+    function validationChecks(d) {
+      const t4 = measure(0.5, 2);
+      const t5 = measure(1, 2);
+      const eig = SecondOrder.eigenvalues(1, 2, 4);
+      const poles = SecondOrder.poles(0.5, 2);
+      const expected = sortPoles([{ re: -1, im: 1.732 }, { re: -1, im: -1.732 }]);
+      const got = sortPoles(eig);
+      const eigOk = got.every((p, i) => Math.abs(p.re - expected[i].re) <= 0.001 && Math.abs(p.im - expected[i].im) <= 0.001);
+      const live = poleGap(SecondOrder.eigenvalues(d.m, d.b, d.k), SecondOrder.poles(d.zeta, d.wn));
+      return [
+        {
+          name: 'Test 4: overshoot for \u03b6 = 0.5', detail: '\u03c9n = 2 rad/s, unit step',
+          expected: { main: '16.3 %', sub: 'e^(\u2212\u03c0\u03b6/\u221a(1\u2212\u03b6\u00b2))' },
+          calculated: { main: `${fmt(t4.mp, 2)} %`, sub: `peak y = ${fmt(t4.ymax, 4)}` },
+          pass: Math.abs(t4.mp - 16.3) <= 0.05
+        },
+        {
+          name: 'Test 5: overshoot for \u03b6 = 1', detail: '\u03c9n = 2 rad/s, critically damped',
+          expected: { main: 'none', sub: '0 %' },
+          calculated: { main: `${fmt(t5.mp, 2)} %`, sub: `max y = ${fmt(t5.ymax, 6)}` },
+          pass: t5.mp === 0 && t5.ymax <= 1
+        },
+        {
+          name: 'Test 6a: eigenvalues of A', detail: 'm = 1, b = 2, k = 4 (\u03b6 = 0.5, \u03c9n = 2)',
+          expected: { main: '\u22121 \u00b1 j1.732', sub: 'from the slides' },
+          calculated: { main: `${fmtComplex(eig[0])}`, sub: `and ${fmtComplex(eig[1])}` },
+          pass: eigOk
+        },
+        {
+          name: 'Test 6b: eigenvalues equal the poles', detail: 'same system, poles of G(s)',
+          expected: { main: 'identical', sub: 'difference 0' },
+          calculated: { main: `${fmtComplex(poles[0])}`, sub: `difference ${poleGap(eig, poles).toExponential(1)}` },
+          pass: poleGap(eig, poles) < 1e-9
+        },
+        {
+          name: 'Live: your current settings', detail: `m = ${fmt(d.m, 1)}, b = ${fmt(d.b, 2)}, k = ${fmt(d.k, 2)}`,
+          expected: { main: 'eigenvalues = poles', sub: 'whatever you set' },
+          calculated: { main: live < 1e-6 ? 'identical' : 'different', sub: `difference ${live < 1e-12 ? '< 1e-12' : live.toExponential(1)}` },
+          pass: live < 1e-6
+        }
+      ];
+    }
+
+    /* ---------- main render ---------- */
+
+    function render() {
+      const d = derive(state);
+      currentK = d.K;
+      const kind = SecondOrder.classify(d.zeta);
+      const met = measure(d.zeta, d.wn);
+      const ref = visibleReference(d);
+      const span = niceCeil(Math.max(1.5 * met.ts, 1));
+      const ringing = kind === 'under' ? d.wn * Math.sqrt(1 - d.zeta * d.zeta) : d.wn;
+      const n = Math.min(6000, Math.max(800, Math.ceil(span * ringing / (2 * Math.PI) * 24)));
+      const times = Array.from({ length: n + 1 }, (_, i) => (i * span) / n);
+
+      ui.caseChip.textContent = CASE_NAME[kind];
+      ui.caseChip.className = 'chip ' + (kind === 'under' ? 'chip--accent' : '');
+      renderLegend(ui.mainLegend, mainLegendItems(Number.isFinite(met.tp), ref));
+
+      if (mainChart) {
+        const [idealSet, outputSet, refSet] = mainChart.data.datasets;
+        idealSet.data = [{ x: 0, y: d.K }, { x: span, y: d.K }];
+        outputSet.data = times.map((t) => ({ x: t, y: d.K * SecondOrder.step(t, d.zeta, d.wn) }));
+        refSet.hidden = !ref;
+        refSet.label = ref ? `Reference (${refText(ref)})` : 'Reference';
+        refSet.data = ref ? times.map((t) => ({ x: t, y: ref.K * SecondOrder.step(t, ref.zeta, ref.wn) })) : [];
+        mainChart.options.scales.x.max = span;
+        mainGuides = mainGuidesFor(d, met, span);
+        mainChart.update('none');
+      }
+      if (sChart) updatePoleChart(d, kind, ref);
+      updatePhasePlane(d, span, kind);
+      ui.sChip.textContent = kind === 'under' ? 'complex pair' : kind === 'critical' ? 'double pole' : 'two real poles';
+      updateStateSpace(d);
+
+      // metrics
+      const poles = SecondOrder.poles(d.zeta, d.wn);
+      const slow = Math.min(...poles.map((p) => Math.abs(p.re)));
+      $('m3-met-zeta').textContent = fmt(d.zeta, 2);
+      $('m3-met-zeta-note').textContent = kind === 'under' ? 'Below 1: it rings.' : kind === 'critical' ? 'Exactly 1: fastest without ringing.' : 'Above 1: no ringing, but slow.';
+      $('m3-met-wn').textContent = fmt(d.wn, 2);
+      $('m3-met-wn-note').textContent = kind === 'under'
+        ? `Rings at \u03c9d = ${fmt(ringing, 3)} rad/s (${fmt(ringing / (2 * Math.PI), 2)} Hz).`
+        : `Undamped it would swing at ${fmt(d.wn / (2 * Math.PI), 2)} Hz.`;
+      $('m3-met-tr').textContent = fmt(met.tr, 2);
+      $('m3-met-tp').textContent = Number.isFinite(met.tp) ? fmt(met.tp, 2) : '\u2014';
+      $('m3-met-tp-note').textContent = Number.isFinite(met.tp)
+        ? `Formula \u03c0/\u03c9d = ${fmt(SecondOrder.peakTimeFormula(d.zeta, d.wn), 2)} s.`
+        : 'There is no peak above the final value.';
+      $('m3-met-mp').textContent = fmt(met.mp, 1);
+      $('m3-met-mp-note').textContent = kind === 'under'
+        ? `Formula e^(\u2212\u03c0\u03b6/\u221a(1\u2212\u03b6\u00b2)) = ${fmt(100 * SecondOrder.overshootFormula(d.zeta), 1)}%.`
+        : 'Zero for \u03b6 \u2265 1.';
+      $('m3-met-ts').textContent = fmt(met.ts, 2);
+      $('m3-met-ts-note').textContent = kind === 'under'
+        ? `Rule of thumb 4/(\u03b6\u03c9n) = ${fmt(4 / (d.zeta * d.wn), 2)} s.`
+        : `The slow pole at \u2212${fmt(slow, 2)} sets the pace.`;
+
+      // explanation for the current case
+      if (kind === 'under') {
+        ui.caseTitle.textContent = 'Underdamped: it overshoots and rings';
+        ui.caseText.textContent = `With \u03b6 = ${fmt(d.zeta, 2)} the output passes the final value by ${fmt(met.mp, 1)}%, then oscillates at \u03c9d = ${fmt(ringing, 2)} rad/s while an envelope e^(\u2212\u03b6\u03c9n t) shrinks it. The poles are a complex pair off the real axis.`;
+      } else if (kind === 'critical') {
+        ui.caseTitle.textContent = 'Critically damped: as fast as possible without overshoot';
+        ui.caseText.textContent = `\u03b6 = 1 puts a double pole at s = \u2212\u03c9n = \u2212${fmt(d.wn, 2)}. The output reaches the final value as quickly as it can without ever crossing it, and settles in ${fmt(met.ts, 2)} s.`;
+      } else {
+        ui.caseTitle.textContent = 'Overdamped: no overshoot, but sluggish';
+        ui.caseText.textContent = `Two real poles, at \u2212${fmt(Math.max(...poles.map((p) => Math.abs(p.re))), 2)} and \u2212${fmt(slow, 2)}. The one nearer the origin dominates, so the sensor behaves almost like a first-order one with \u03c4 \u2248 1/${fmt(slow, 2)} = ${fmt(1 / slow, 2)} s.`;
+      }
+
+      const checks = validationChecks(d);
+      const passed = renderValidation(ui.validationBody, checks);
+      ui.validationSummary.textContent = `${passed} of ${checks.length} passed`;
+      ui.validationSummary.className = 'chip ' + (passed === checks.length ? 'chip--pass' : 'chip--fail');
+
+      const stored = state.reference;
+      if (!stored) ui.refStatus.textContent = 'No reference curve. Pin the current curve to compare it with later settings.';
+      else if (!ref) ui.refStatus.textContent = `Reference: ${refText(stored)}. It matches the live curve, so it is hidden until you change a setting.`;
+      else ui.refStatus.textContent = `Dotted reference: ${refText(stored)}.`;
+      ui.pin.disabled = Boolean(stored) && !ref;
+      ui.unpin.disabled = !stored;
+
+      ui.mainCanvas.setAttribute('aria-label',
+        `${CASE_NAME[kind]} step response with damping ratio ${fmt(d.zeta, 2)} and natural frequency ${fmt(d.wn, 2)} radians per second. ` +
+        `Rise time ${fmt(met.tr, 2)} s, overshoot ${fmt(met.mp, 1)} percent, settling time ${fmt(met.ts, 2)} s.`);
+      ui.sCanvas.setAttribute('aria-label', `s-plane with ${kind === 'under' ? 'a complex pair' : kind === 'critical' ? 'a double pole' : 'two real poles'} at ${poles.map((p) => fmtComplex(p, 2)).join(' and ')}.`);
+      ui.pCanvas.setAttribute('aria-label', kind === 'under' ? 'Phase plane: the path spirals into the rest point.' : 'Phase plane: the path goes to the rest point without spiralling.');
+    }
+
+    /* ---------- controls ---------- */
+
+    function setSliderFill(slider) {
+      const min = Number(slider.min), max = Number(slider.max);
+      slider.style.setProperty('--fill', `${((Number(slider.value) - min) / (max - min)) * 100}%`);
+    }
+
+    const READOUTS = {
+      zeta: (v) => v.toFixed(2), wn: (v) => `${v.toFixed(1)} rad/s`, K: (v) => v.toFixed(1),
+      m: (v) => `${v.toFixed(1)} kg`, b: (v) => `${v.toFixed(1)} N\u00b7s/m`, k: (v) => `${v.toFixed(1)} N/m`
+    };
+
+    function syncControls() {
+      Object.keys(ui.sliders).forEach((key) => {
+        ui.sliders[key].value = String(state[key]);
+        ui.outputs[key].textContent = READOUTS[key](state[key]);
+        setSliderFill(ui.sliders[key]);
+      });
+      ui.modeRadios.forEach((r) => { r.checked = r.value === state.mode; });
+      ui.setZW.hidden = state.mode !== 'zw';
+      ui.setMBK.hidden = state.mode !== 'mbk';
+      const d = derive(state);
+      ui.modeHelp.textContent = state.mode === 'zw'
+        ? 'The dimensionless view used on the slides. The mass is fixed at 1 kg for the state-space panel.'
+        : 'The physical view: choose the parts, and \u03b6 and \u03c9n follow from them.';
+      ui.derived.textContent = state.mode === 'zw'
+        ? `Equivalent parts: m = 1 kg, b = ${fmt(d.b, 2)} N\u00b7s/m, k = ${fmt(d.k, 2)} N/m.`
+        : `Result: \u03b6 = ${fmt(d.zeta, 3)}, \u03c9n = ${fmt(d.wn, 3)} rad/s, K = 1/k = ${fmt(d.K, 3)}.`;
+    }
+
+    function onControlChange() {
+      syncControls();
+      render();
+      predict.notifyInteraction();
+    }
+
+    Object.keys(ui.sliders).forEach((key) => {
+      ui.sliders[key].addEventListener('input', () => { state[key] = Number(ui.sliders[key].value); onControlChange(); });
+    });
+    ui.modeRadios.forEach((radio) => radio.addEventListener('change', () => {
+      if (radio.checked) { switchMode(radio.value); onControlChange(); }
+    }));
+    document.getElementById('m3-root').querySelectorAll('.preset-list [data-zeta]').forEach((btn) => btn.addEventListener('click', () => {
+      if (state.mode !== 'zw') switchMode('zw');
+      state.zeta = Number(btn.dataset.zeta);
+      onControlChange();
+    }));
+
+    function pinCurrentCurve() {
+      const d = derive(state);
+      state.reference = { zeta: d.zeta, wn: d.wn, K: d.K };
+      render();
+    }
+    ui.pin.addEventListener('click', pinCurrentCurve);
+    ui.unpin.addEventListener('click', () => { state.reference = null; render(); });
+    ui.reset.addEventListener('click', () => {
+      Object.assign(state, DEFAULTS);
+      const d = derive(state);
+      state.reference = { zeta: d.zeta, wn: d.wn, K: d.K };
+      syncControls();
+      render();
+    });
+
+    const predict = createPredictCheck($('m3-predict'), QUESTIONS, { onCheck: pinCurrentCurve });
+
+    state.reference = (() => { const d = derive(state); return { zeta: d.zeta, wn: d.wn, K: d.K }; })();
+    createCharts();
+    syncControls();
+    render();
+  }
+
+  initModule3();
+  })();
+  </script>
+  <script>
+  /* =========================================================================
+     MODULE 4: GUESS THE SENSOR
+     Wrapped in its own function so its names cannot clash with other modules.
+     ========================================================================= */
+  (function () {
+
+    // ENCS4380 - Module 4: Guess the Sensor
+    // Pure browser-side implementation with a dependency-free SVG chart.
+    const $ = id => document.getElementById('m4-' + id);   // every Module 4 id starts with m4-
+    const rand = (lo, hi) => lo + Math.random() * (hi-lo);
+    const roundTo = (v, digits=2) => Number(v.toFixed(digits));
+    let active = null;
+    let checkedRounds = 0, perfectRounds = 0, totalPoints = 0;
+
+    function firstStep(t, K, tau) { return K*(1-Math.exp(-t/tau)); }
+    function firstSine(t, K, tau, omega) {
+      const magnitude = K/Math.sqrt(1+(omega*tau)**2);
+      return magnitude*Math.sin(omega*t-Math.atan(omega*tau));
+    }
+    function secondStep(t, z, wn) {
+      if (z < 1 - 1e-8) {
+        const wd = wn*Math.sqrt(1-z*z);
+        return 1-Math.exp(-z*wn*t)*(Math.cos(wd*t) + z/Math.sqrt(1-z*z)*Math.sin(wd*t));
+      }
+      if (Math.abs(z-1) < 1e-8) return 1-(1+wn*t)*Math.exp(-wn*t);
+      const r = Math.sqrt(z*z-1);
+      const p1 = -wn*(z-r), p2 = -wn*(z+r);
+      return 1 - (p2*Math.exp(p1*t)-p1*Math.exp(p2*t))/(p2-p1);
+    }
+    function predict(t, par, current=active) {
+      if (current.kind === 'step1') return firstStep(t,par.K,par.tau);
+      if (current.kind === 'sine1') return firstSine(t,par.K,par.tau,current.omega);
+      return secondStep(t,par.zeta,par.wn);
+    }
+    function drawFallbackPlot(target, traces) {
+      const compact=window.matchMedia('(max-width: 600px)').matches;
+      const width=Math.max(240,target.clientWidth);
+      const height=target.clientHeight||330;
+      const columns=compact?1:traces.length;
+      const legendRows=Math.ceil(traces.length/columns);
+      const margin={top:14,right:compact?8:18,bottom:42+legendRows*17,left:compact?42:54};
+      const plotWidth=width-margin.left-margin.right;
+      const plotHeight=height-margin.top-margin.bottom;
+      const allX=[],allY=[];
+      traces.forEach(trace=>{
+        allX.push(...trace.x);
+        allY.push(...trace.y);
+      });
+      const xMin=Math.min(0,...allX),xMax=Math.max(...allX);
+      let yMin=Math.min(...allY),yMax=Math.max(...allY);
+      const yPadding=(yMax-yMin||1)*.06;
+      yMin-=yPadding;yMax+=yPadding;
+      const xPos=value=>margin.left+(value-xMin)/(xMax-xMin||1)*plotWidth;
+      const yPos=value=>margin.top+(yMax-value)/(yMax-yMin)*plotHeight;
+      const canvas=document.createElement('canvas');
+      const scale=Math.min(window.devicePixelRatio||1,2);
+      canvas.width=Math.round(width*scale);
+      canvas.height=Math.round(height*scale);
+      canvas.style.width='100%';
+      canvas.style.height='100%';
+      canvas.setAttribute('role','img');
+      canvas.setAttribute('aria-label','Sensor response graph');
+      const context=canvas.getContext('2d');
+      if(!context) {
+        target.textContent='The response graph is unavailable in this browser.';
+        return;
+      }
+      context.scale(scale,scale);
+      context.font=`${compact?10:11}px system-ui, sans-serif`;
+      context.lineWidth=1;
+      context.fillStyle='white';
+      context.fillRect(0,0,width,height);
+
+      for(let i=0;i<=4;i++) {
+        const x=margin.left+plotWidth*i/4;
+        const value=xMin+(xMax-xMin)*i/4;
+        context.beginPath();
+        context.moveTo(x,margin.top);
+        context.lineTo(x,margin.top+plotHeight);
+        context.strokeStyle='#e6ebf1';
+        context.stroke();
+        context.textAlign='center';
+        context.fillStyle='#475569';
+        context.fillText(Number(value.toPrecision(2)).toString(),x,margin.top+plotHeight+15);
+      }
+      for(let i=0;i<=4;i++) {
+        const y=margin.top+plotHeight*i/4;
+        const raw=yMax-(yMax-yMin)*i/4;
+        const value=Math.abs(raw)<(yMax-yMin)*1e-3?0:raw;   // show a near-zero tick as 0, not 0.00031
+        context.beginPath();
+        context.moveTo(margin.left,y);
+        context.lineTo(margin.left+plotWidth,y);
+        context.strokeStyle='#e6ebf1';
+        context.stroke();
+        context.textAlign='right';
+        context.fillStyle='#475569';
+        context.fillText(Number(value.toPrecision(2)).toString(),margin.left-7,y+4);
+      }
+      context.textAlign='center';
+      context.fillStyle='#475569';
+      context.fillText('Time (s)',margin.left+plotWidth/2,height-legendRows*17-19);
+      context.save();
+      context.translate(13,margin.top+plotHeight/2);
+      context.rotate(-Math.PI/2);
+      context.fillText('Output',0,0);
+      context.restore();
+
+      traces.forEach((trace,index)=>{
+        const line=trace.line||{},marker=trace.marker||{};
+        const color=line.color||marker.color||'#007c83';
+        if(trace.mode==='lines') {
+          context.beginPath();
+          trace.x.forEach((x,i)=>{
+            if(i===0)context.moveTo(xPos(x),yPos(trace.y[i]));
+            else context.lineTo(xPos(x),yPos(trace.y[i]));
+          });
+          context.strokeStyle=color;
+          context.lineWidth=line.width||2;
+          context.setLineDash(line.dash==='dash'?[7,5]:line.dash==='dot'?[2,4]:[]);
+          context.stroke();
+          context.setLineDash([]);
+        }
+        if(trace.mode==='markers') {
+          context.fillStyle=color;
+          context.globalAlpha=marker.opacity||1;
+          trace.x.forEach((x,i)=>{
+            context.beginPath();
+            context.arc(xPos(x),yPos(trace.y[i]),compact?2.1:2.5,0,Math.PI*2);
+            context.fill();
+          });
+          context.globalAlpha=1;
+        }
+        const col=index%columns,row=Math.floor(index/columns);
+        const itemX=margin.left+col*(plotWidth/columns);
+        const itemY=height-legendRows*17+row*17+5;
+        if(trace.mode==='lines') {
+          context.beginPath();
+          context.moveTo(itemX,itemY-3);
+          context.lineTo(itemX+15,itemY-3);
+          context.strokeStyle=color;
+          context.lineWidth=2;
+          context.setLineDash(line.dash==='dash'?[7,5]:line.dash==='dot'?[2,4]:[]);
+          context.stroke();
+          context.setLineDash([]);
+        } else {
+          context.beginPath();
+          context.arc(itemX+7,itemY-3,2.5,0,Math.PI*2);
+          context.fillStyle=color;
+          context.fill();
+        }
+        context.textAlign='left';
+        context.fillStyle='#475569';
+        context.fillText(trace.name,itemX+20,itemY);
+      });
+      while(target.firstChild)target.removeChild(target.firstChild);
+      target.appendChild(canvas);
+    }
+
+    function plot(guess=null) {
+      const c=active;
+      const t=Array.from({length:301},(_,i)=>c.duration*i/300);
+      const traces=[];
+      if(c.kind==='sine1') traces.push({x:t,y:t.map(x=>Math.sin(c.omega*x)),mode:'lines',name:'Known sine input',line:{color:'#94a3b8',dash:'dash'}});
+      if(c.kind==='step1') traces.push({x:t,y:t.map(()=>1),mode:'lines',name:'Known unit step',line:{color:'#94a3b8',dash:'dash'}});
+      traces.push({x:c.sampleT,y:c.samples,mode:'markers',name:'Noisy sensor samples',marker:{color:'#0f766e',size:5,opacity:.8}});
+      if(guess) {
+        traces.push({x:t,y:t.map(x=>predict(x,guess)),mode:'lines',name:'Your guessed model',line:{color:'#e88c30',width:3}});
+        traces.push({x:t,y:t.map(x=>predict(x,c.params)),mode:'lines',name:'True model',line:{color:'#7c3aed',width:2,dash:'dot'}});
+      }
+      lastTraces=traces;
+      drawFallbackPlot($('responsePlot'),traces);
+    }
+    function newSensor() {
+      const kinds=['step1','sine1','second'];
+      const kind=kinds[Math.floor(Math.random()*kinds.length)];
+      let params,duration,omega=null,noise;
+      if(kind==='step1') {
+        params={K:roundTo(rand(.7,2.5)),tau:roundTo(rand(.35,2.3))};
+        duration=roundTo(5*params.tau);noise=.025*params.K;
+      } else if(kind==='sine1') {
+        params={K:roundTo(rand(.8,2)),tau:roundTo(rand(.2,1.1))};
+        omega=roundTo(rand(1.3,3.5));duration=roundTo(Math.max(8,5*2*Math.PI/omega));
+        noise=.025*params.K;
+      } else {
+        // Underdamped only: the homework's method (overshoot gives zeta, peak time gives wn) needs a visible
+        // peak, and zeta <= 0.6 keeps the overshoot (9.5% or more) well above the +-0.02 noise.
+        const zeta=roundTo(rand(.2,.6));
+        params={zeta,wn:roundTo(rand(1,3.3))};
+        duration=roundTo(12/params.wn);noise=.02;
+      }
+      const sampleT=Array.from({length:91},(_,i)=>duration*i/90);
+      const context={kind,params,duration,omega};
+      const samples=sampleT.map(t=>predict(t,params,context)+rand(-noise,noise));
+      active={...context,sampleT,samples,solved:false};
+      $('result').hidden=true;$('hintText').hidden=true;
+      $('checkBtn').disabled=false;
+      let fields,question,hint,roundName,roundHint;
+      if(kind==='step1') {
+        roundName='Unknown first-order sensor • Unit step';
+        roundHint='Input jumps from 0 to 1 at t = 0.';
+        question='Estimate gain K and time constant τ from the response curve.';
+        hint='Estimate K from the final plateau. Find where the curve reaches 63.2% of that plateau; that time is τ.';
+        fields=[['K','Gain K',''],['tau','Time constant τ','s']];
+      } else if(kind==='sine1') {
+        roundName='Unknown first-order sensor • Sine input';
+        roundHint=`Known input: sin(${omega}t), so ω = ${omega} rad/s. Output is the steady-state sinusoid.`;
+        question='Estimate K and τ from amplitude attenuation and phase lag relative to the dashed input.';
+        hint='Compare output amplitude and input amplitude, and measure the time shift Δt: |φ| = ωΔt. Then τ = tan(|φ|)/ω and K = M√(1+(ωτ)²).';
+        fields=[['K','Gain K',''],['tau','Time constant τ','s']];
+      } else {
+        roundName='Unknown second-order sensor • Unit step';
+        roundHint='The response is normalized to a final value of 1.';
+        question='Estimate damping ratio ζ and natural frequency ωn from the overshoot and the peak time.';
+        hint='Overshoot depends only on ζ: read OS from the highest point above 1, then ζ = −ln(OS)/√(π² + ln²(OS)). Peak time depends on ζ and ωn: ωn = π/(tp√(1 − ζ²)).';
+        fields=[['zeta','Damping ratio ζ',''],['wn','Natural frequency ωn','rad/s']];
+      }
+      $('roundName').textContent=roundName;$('roundHint').textContent=roundHint;
+      $('question').textContent=question;$('hintText').textContent=hint;
+      $('fields').innerHTML=fields.map(([id,label,unit])=>`<div class="field"><label for="m4-${id}">${label}${unit?` (${unit})`:''}</label><input type="number" id="m4-${id}" name="${id}" min="0.001" step="any" required placeholder="Your estimate" /></div>`).join('');
+      plot();
+    }
+    function checkGuess(e) {
+      e.preventDefault();
+      if(!active||active.solved) return;
+      const names=Object.keys(active.params);
+      const guess={};
+      for(const key of names){const input=$(key);const v=Number(input.value);if(!input.value.trim()||!Number.isFinite(v)||v<=0){input.reportValidity();return;}guess[key]=v;}
+      const errors=names.map(key=>Math.abs(guess[key]-active.params[key])/active.params[key]);
+      const passed=errors.every(err=>err<=.1);
+      const score=errors.reduce((sum,err)=>sum+(err<=.1?5:0),0);
+      checkedRounds++;totalPoints+=score;if(passed)perfectRounds++;
+      $('rounds').textContent=checkedRounds;$('perfect').textContent=perfectRounds;
+      $('total').textContent=`${totalPoints} / ${checkedRounds*10}`;
+      const labels={K:'K',tau:'τ',zeta:'ζ',wn:'ωn'};
+      const rows=names.map((key,i)=>`<tr><td>${labels[key]}</td><td>${guess[key].toFixed(3)}</td><td>${active.params[key].toFixed(3)}</td><td>${(errors[i]*100).toFixed(1)}%</td><td>${errors[i]<=.1?'PASS':'TRY AGAIN NEXT ROUND'}</td></tr>`).join('');
+      $('result').innerHTML=`<h3>${passed?'Excellent! All parameters within 10%.':'Results revealed'} — ${score}/10 points</h3><table><thead><tr><th>Parameter</th><th>Your guess</th><th>True value</th><th>Error</th><th>Result</th></tr></thead><tbody>${rows}</tbody></table><p>Orange line = your guess; purple dotted line = true model. Click <strong>New sensor</strong> to continue.</p>`;
+      $('result').hidden=false;$('checkBtn').disabled=true;active.solved=true;
+      plot(guess);
+    }
+    $('guessForm').addEventListener('submit',checkGuess);
+    $('newBtn').addEventListener('click',newSensor);
+    $('hintBtn').addEventListener('click',()=>{$('hintText').hidden=!$('hintText').hidden;});
+    let lastTraces=[];
+    const responsePlot=$('responsePlot');
+    if('ResizeObserver' in window) {
+      new ResizeObserver(()=>{
+        if(lastTraces.length)drawFallbackPlot(responsePlot,lastTraces);
+      }).observe(responsePlot);
+    }
+    newSensor();
+  })();
   </script>
 </body>
 </html>
