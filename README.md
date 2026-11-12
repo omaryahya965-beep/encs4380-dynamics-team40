@@ -26,7 +26,9 @@ Screenshots below illustrate the modules and features in the toolkit. Click an i
 
 ### Module 1 — First-Order Time Response
 
-> **Screenshot to add:** A Module 1 screenshot was not included with the supplied images. Save it as `screenshots/module-1.png`, then replace this note with `![Module 1 step and ramp response](screenshots/module-1.png)`.
+**Step response with gain and time-constant controls, 63.2% and 95% markers, and live response metrics**
+
+[![Module 1: first-order step response with gain and time-constant controls, 63.2% and 95% markers](screenshots/module-1.png)](screenshots/module-1.png)
 
 ### Module 2 — First-Order Frequency Response
 
